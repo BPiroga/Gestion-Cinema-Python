@@ -1,0 +1,12 @@
+To Do List :
+
+8. Application de gestion de cinéma
+Description : Système de réservation de places, avec gestion des séances.
+
+Objectifs : Interactions entre classes et exceptions personnalisées.
+
+Classes proposées : Film, Salle, Reservation.
+
+Exceptions à gérer : Salle pleine, film inexistant.
+
+Niveau : Avance.
