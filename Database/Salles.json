@@ -1,0 +1,35 @@
+[
+  {
+    "numSalle" : 1,
+    "nbPlaces" : 386 ,
+    "type" : "Standard"
+  },
+
+    {
+    "numSalle" : 2,
+    "nbPlaces" : 386 ,
+    "type" : "Standard"
+  },
+
+    {
+    "numSalle" : 3,
+    "nbPlaces" : 386 ,
+    "type" : "Standard"
+  },
+
+    {
+    "numSalle" : 4,
+    "nbPlaces" : 386 ,
+    "type" : "Standard"
+  },
+    {
+    "numSalle" : 5,
+    "nbPlaces" : 325 ,
+    "type" : "3D"
+  },
+    {
+    "numSalle" : 6,
+    "nbPlaces" : 487  ,
+    "type" : "Imax"
+  }
+]
