@@ -10,6 +10,9 @@ def jsonToObject (fileName) :
     x = json.load(data , object_hook = SimpleNamespace) #fait un conversion json->dictionnaire->objet
     return x
 
+#comme on ne peut pas mettre de méthode dans les fichier JSON il faudrait faire une fonction qui ajoute les méthodes
+#après chaque conversion jsonToObject (et une qui permet de les enlever pour l'autre sens)
+
 def objectToJson (obj,fileName): #testée seulement avec des tableaux d'objets
     try :
         with open("./Database/"+fileName+".json","w", encoding="utf-8") as f:
@@ -18,6 +21,7 @@ def objectToJson (obj,fileName): #testée seulement avec des tableaux d'objets
         print("Error with obj to json conversion")
         exit()
 #print(type(jsonToObject('Films')))
+
 
 
 #x =jsonToObject('Films')
