@@ -2,34 +2,64 @@
   {
     "numSalle" : 1,
     "nbPlaces" : 361 ,
-    "type" : "Standard"
+    "type" : "Standard",
+    "places" : [
+      {"column":1, "row":1, "estOccupee": false},
+      {"column":1, "row":2, "estOccupee": false},
+      {"column":1, "row":3, "estOccupee": false}
+    ]
   },
 
     {
     "numSalle" : 2,
     "nbPlaces" : 361 ,
-    "type" : "Standard"
+    "type" : "Standard",
+    "places" : [
+      {"column":1, "row":1, "estOccupee": false},
+      {"column":1, "row":2, "estOccupee": false},
+      {"column":1, "row":3, "estOccupee": false}
+    ]
   },
 
     {
     "numSalle" : 3,
     "nbPlaces" : 361 ,
-    "type" : "Standard"
+    "type" : "Standard",
+    "places" : [
+      {"column":1, "row":1, "estOccupee": false},
+      {"column":1, "row":2, "estOccupee": false},
+      {"column":1, "row":3, "estOccupee": false}
+    ]
   },
 
     {
     "numSalle" : 4,
     "nbPlaces" : 361 ,
-    "type" : "Standard"
+    "type" : "Standard",
+    "places" : [
+      {"column":1, "row":1, "estOccupee": false},
+      {"column":1, "row":2, "estOccupee": false},
+      {"column":1, "row":3, "estOccupee": false}
+    ]
   },
     {
     "numSalle" : 5,
     "nbPlaces" : 324 ,
-    "type" : "3D"
+    "type" : "3D",
+    "places" : [
+      {"column":1, "row":1, "estOccupee": false},
+      {"column":1, "row":2, "estOccupee": false},
+      {"column":1, "row":3, "estOccupee": false}
+    ]
   },
     {
     "numSalle" : 6,
     "nbPlaces" : 484  ,
-    "type" : "Imax"
+    "type" : "Imax",
+    "places" : [
+      {"column":1, "row":1, "estOccupee": false},
+      {"column":1, "row":2, "estOccupee": false},
+      {"column":1, "row":3, "estOccupee": false}
+    ]
   }
 ]
