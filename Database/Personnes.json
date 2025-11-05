@@ -1,0 +1,14 @@
+[{
+  "id" : 1,
+  "mail" : "john.doe@gmail.com",
+  "categorie" : "adulte"
+  
+},
+{
+  "id" : 2,
+  "mail" : "jane.doe@gmail.com",
+  "categorie" : "etudiant"
+  
+}
+
+]
