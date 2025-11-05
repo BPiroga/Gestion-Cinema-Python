@@ -1,65 +1,156 @@
 [
   {
-    "numSalle" : 1,
-    "nbPlaces" : 361 ,
-    "type" : "Standard",
-    "places" : [
-      {"column":1, "row":1, "estOccupee": false},
-      {"column":1, "row":2, "estOccupee": false},
-      {"column":1, "row":3, "estOccupee": false}
+    "numSalle": 1,
+    "nbPlaces": 361,
+    "type": "Standard",
+    "places": [
+      {
+        "column": 1,
+        "row": 1,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 2,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 3,
+        "estOccupee": false,
+        "personne": null
+      }
     ]
   },
-
-    {
-    "numSalle" : 2,
-    "nbPlaces" : 361 ,
-    "type" : "Standard",
-    "places" : [
-      {"column":1, "row":1, "estOccupee": false},
-      {"column":1, "row":2, "estOccupee": false},
-      {"column":1, "row":3, "estOccupee": false}
+  {
+    "numSalle": 2,
+    "nbPlaces": 361,
+    "type": "Standard",
+    "places": [
+      {
+        "column": 1,
+        "row": 1,
+        "estOccupee": true,
+        "personne": {
+          "id": null,
+          "mail": "bruno.rocha@gmail.com",
+          "categorie": "etudiant"
+        }
+      },
+      {
+        "column": 1,
+        "row": 2,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 3,
+        "estOccupee": false,
+        "personne": null
+      }
     ]
   },
-
-    {
-    "numSalle" : 3,
-    "nbPlaces" : 361 ,
-    "type" : "Standard",
-    "places" : [
-      {"column":1, "row":1, "estOccupee": false},
-      {"column":1, "row":2, "estOccupee": false},
-      {"column":1, "row":3, "estOccupee": false}
+  {
+    "numSalle": 3,
+    "nbPlaces": 361,
+    "type": "Standard",
+    "places": [
+      {
+        "column": 1,
+        "row": 1,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 2,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 3,
+        "estOccupee": false,
+        "personne": null
+      }
     ]
   },
-
-    {
-    "numSalle" : 4,
-    "nbPlaces" : 361 ,
-    "type" : "Standard",
-    "places" : [
-      {"column":1, "row":1, "estOccupee": false},
-      {"column":1, "row":2, "estOccupee": false},
-      {"column":1, "row":3, "estOccupee": false}
+  {
+    "numSalle": 4,
+    "nbPlaces": 361,
+    "type": "Standard",
+    "places": [
+      {
+        "column": 1,
+        "row": 1,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 2,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 3,
+        "estOccupee": false,
+        "personne": null
+      }
     ]
   },
-    {
-    "numSalle" : 5,
-    "nbPlaces" : 324 ,
-    "type" : "3D",
-    "places" : [
-      {"column":1, "row":1, "estOccupee": false},
-      {"column":1, "row":2, "estOccupee": false},
-      {"column":1, "row":3, "estOccupee": false}
+  {
+    "numSalle": 5,
+    "nbPlaces": 324,
+    "type": "3D",
+    "places": [
+      {
+        "column": 1,
+        "row": 1,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 2,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 3,
+        "estOccupee": false,
+        "personne": null
+      }
     ]
   },
-    {
-    "numSalle" : 6,
-    "nbPlaces" : 484  ,
-    "type" : "Imax",
-    "places" : [
-      {"column":1, "row":1, "estOccupee": false},
-      {"column":1, "row":2, "estOccupee": false},
-      {"column":1, "row":3, "estOccupee": false}
+  {
+    "numSalle": 6,
+    "nbPlaces": 484,
+    "type": "Imax",
+    "places": [
+      {
+        "column": 1,
+        "row": 1,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 2,
+        "estOccupee": false,
+        "personne": null
+      },
+      {
+        "column": 1,
+        "row": 3,
+        "estOccupee": false,
+        "personne": null
+      }
     ]
   }
 ]

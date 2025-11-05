@@ -18,6 +18,7 @@
     },
 
     {
+        "id": 3,
         "nom": "CHAINSAW MAN - LE FILM : L'ARC DE REZE",
         "realisateur": "Tatsuya Yoshihara",
         "duree": 100,
@@ -25,6 +26,7 @@
         "cover": "./media/images/covers/chainsawMan.jpg"
     },
     {
+        "id": 4,
         "nom": "KAAMELOTT - DEUXIEME VOLET : PARTIE 1",
         "realisateur": "Alexandre Astier",
         "duree": 139,
@@ -32,6 +34,7 @@
         "cover": "./media/images/covers/kaamelott.jpg"
     },
     {
+        "id": 5,
         "nom": "CHUNGKING EXPRESS",
         "realisateur": "Wong Kar Wai",
         "duree": 97,
@@ -39,6 +42,7 @@
         "cover": "./media/images/covers/chungking.jpg"
     },
     {
+        "id": 6,
         "nom": "Requiem For A Dream",
         "realisateur": "Darren Aronofsky",
         "duree": 102,
@@ -46,6 +50,7 @@
         "cover": "./media/images/covers/requiem4adream.jpg"
     },
     {
+        "id": 7,
         "nom": "Le Scaphandre Et Le Papillon",
         "realisateur": "Julian Schnabel",
         "duree": 112,
@@ -53,6 +58,7 @@
         "cover": "./media/images/covers/scaphandre.jpg"
     },
     {
+        "id": 8,
         "nom": "L\u00e9on",
         "realisateur": "Luc Besson",
         "duree": 103,
@@ -60,6 +66,7 @@
         "cover": "./media/images/covers/leon.jpg"
     },
     {
+        "id": 9,
         "nom": "Insidious",
         "realisateur": "James Wan",
         "duree": 103,
@@ -67,6 +74,7 @@
         "cover": "./media/images/covers/insidious.jpg"
     },
     {
+        "id": 10,
         "nom": "Fallen Angels",
         "realisateur": "Wong Kar Wai",
         "duree": 99,

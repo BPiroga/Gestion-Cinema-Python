@@ -1,27 +1,86 @@
 [
   {
-    "id" : 1,
-    "jour" : "22-10-2025",
-    "horaire" : "13:00:00",
-    "filmId" : 1,
-    "salleNum" : 1
+    "id": 1,
+    "jour": "22-10-2025",
+    "horaire": "13:00:00",
+    "filmId": 1,
+    "salleNum": 1
   },
-  
   {
-    "id" : 2,
-    "jour" : "22-10-2025",
-    "horaire" : "14:40:00"
+    "id": 2,
+    "jour": "22-10-2025",
+    "horaire": "14:40:00",
+    "filmId": 2,
+    "salleNum": 2
   },
-
   {
-    "id" : 2,
-    "jour" : "22-10-2025",
-    "horaire" : "15:45:00"
+    "id": 3,
+    "jour": "22-10-2025",
+    "horaire": "15:45:00",
+    "filmId": 3,
+    "salleNum": 3
   },
-  
   {
-    "id" : 2,
-    "jour" : "22-10-2025",
-    "horaire" : "17:40:00"
+    "id": 4,
+    "jour": "22-10-2025",
+    "horaire": "17:40:00",
+    "filmId": 4,
+    "salleNum": 4
+  },
+  {
+    "id": 5,
+    "jour": "22-10-2025",
+    "horaire": "13:30:00",
+    "filmId": 5,
+    "salleNum": 5
+  },
+  {
+    "id": 6,
+    "jour": "22-10-2025",
+    "horaire": "16:00:00",
+    "filmId": 6,
+    "salleNum": 6
+  },
+  {
+    "id": 7,
+    "jour": "22-10-2025",
+    "horaire": "18:30:00",
+    "filmId": 7,
+    "salleNum": 1
+  },
+  {
+    "id": 8,
+    "jour": "22-10-2025",
+    "horaire": "20:00:00",
+    "filmId": 8,
+    "salleNum": 2
+  },
+  {
+    "id": 9,
+    "jour": "22-10-2025",
+    "horaire": "21:15:00",
+    "filmId": 9,
+    "salleNum": 3
+  },
+  {
+    "id": 10,
+    "jour": "22-10-2025",
+    "horaire": "19:45:00",
+    "filmId": 10,
+    "salleNum": 4
+  },
+  {
+    "id": 11,
+    "jour": "22-10-2025",
+    "horaire": "11:00:00",
+    "filmId": 1,
+    "salleNum": 5
+  },
+  {
+    "id": 12,
+    "jour": "22-10-2025",
+    "horaire": "09:30:00",
+    "filmId": 2,
+    "salleNum": 6
   }
 ]
