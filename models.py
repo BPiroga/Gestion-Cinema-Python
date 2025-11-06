@@ -1,11 +1,9 @@
-from __future__ import annotations
 from dataclasses import dataclass, field
 import json
 
 
 @dataclass
 class Personne:
-    id: int = None
     mail: str = None
     categorie: str = None
 
@@ -14,13 +12,12 @@ class Personne:
         if d is None:
             return None
         return Personne(
-            id=d.get("id"),
             mail=d.get("mail"),
             categorie=d.get("categorie"),
         )
 
     def to_dict(self):
-        return {"id": self.id, "mail": self.mail, "categorie": self.categorie}
+        return {"mail": self.mail, "categorie": self.categorie}
 
 
 @dataclass
@@ -28,7 +25,7 @@ class Place:
     column: int = None
     row: int = None
     estOccupee: bool = False
-    personne: object = None
+    codeReservation: str = None
 
     @staticmethod
     def from_dict(d):
@@ -36,7 +33,7 @@ class Place:
             column=d.get("column"),
             row=d.get("row"),
             estOccupee=bool(d.get("estOccupee", False)),
-            personne=Personne.from_dict(d.get("personne")) if d.get("personne") is not None else None,
+            codeReservation=d.get("codeReservation"),
         )
 
     def to_dict(self):
@@ -44,7 +41,7 @@ class Place:
             "column": self.column,
             "row": self.row,
             "estOccupee": self.estOccupee,
-            "personne": self.personne.to_dict() if self.personne is not None else None,
+            "codeReservation": self.codeReservation,
         }
 
 
@@ -114,6 +111,7 @@ class Seance:
     horaire: str = None
     filmId: int = None
     salleNum: int = None
+    placesFile: str = None
     film = None
     salle = None
 
@@ -127,6 +125,7 @@ class Seance:
             horaire=d.get("horaire"),
             filmId=d.get("filmId"),
             salleNum=d.get("salleNum"),
+            placesFile=d.get("placesFile"),
         )
 
     def to_dict(self):
@@ -139,13 +138,25 @@ class Seance:
             out["filmId"] = self.filmId
         if self.salleNum is not None:
             out["salleNum"] = self.salleNum
+        if self.placesFile is not None:
+            out["placesFile"] = self.placesFile
         return out
 
 
+
+
 # Helper loaders
+
+
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def save_json(path, data):
+    """Sauvegarde des données JSON dans un fichier."""
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def load_personnes(path):
@@ -168,32 +179,57 @@ def load_seances(path):
     return [Seance.from_dict(d) for d in data]
 
 
-# Reservation / persistence helpers
-def find_first_free_place(salle):
-    """Retourne la première Place libre (objet Place) ou None."""
-    for p in salle.places:
-        if not getattr(p, "estOccupee", False):
-            return p
-    return None
+def save_seances(path, seances):
+    """Sauvegarde la liste des séances dans le fichier JSON."""
+    data = [s.to_dict() for s in seances]
+    save_json(path, data)
 
 
-def reserver_first_free_place(salle, personne):
-    """Réserve la première place libre dans la salle pour la personne passée.
-    Retourne la place réservée ou None si aucune place libre.
-    """
-    place = find_first_free_place(salle)
-    if place is None:
+def load_places(path):
+    """Charge le fichier des places pour une séance."""
+    if path is None:
         return None
-    place.estOccupee = True
-    place.personne = personne
-    return place
+    try:
+        data = load_json(path)
+        return [Place.from_dict(p) for p in data]
+    except FileNotFoundError:
+        return None
 
 
-def save_salles(path, salles):
-    """Sauvegarde la liste de salles dans le fichier JSON (remplace le contenu)."""
-    data = [s.to_dict() for s in salles]
-    with open(str(path), "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save_places(path, places):
+    """Sauvegarde les places dans un fichier JSON."""
+    data = [p.to_dict() for p in places]
+    save_json(path, data)
+
+
+def create_places_for_seance(seance, salle_data):
+	"""Crée une grille de places vide pour une séance basée sur la salle.
+	salle_data est un dict contenant row et column."""
+	rows = salle_data.get("row", 10)  # valeur par défaut 10
+	cols = salle_data.get("column", 10)
+	places = []
+	for r in range(1, rows + 1):
+		for c in range(1, cols + 1):
+			places.append(Place(row=r, column=c, estOccupee=False, codeReservation=None))
+	return places
+
+def save_reservation(path, reservation):
+    """Ajoute une nouvelle réservation au fichier JSON. Crée le fichier s'il n'existe pas."""
+    import os
+    
+    # Créer le dossier parent si nécessaire
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    # Charger les réservations existantes ou créer une liste vide
+    try:
+        reservations = load_json(path)
+    except FileNotFoundError:
+        reservations = []
+    
+    reservations.append(reservation)
+    save_json(path, reservations)
 
 
 def generate_ticket_code():
