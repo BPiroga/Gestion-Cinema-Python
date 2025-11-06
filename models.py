@@ -1,11 +1,23 @@
+"""
+Module de définition des modèles de données (dataclasses).
+Contient uniquement les classes et leurs méthodes de sérialisation.
+"""
 from dataclasses import dataclass, field
-import json
 
 
 @dataclass
 class Personne:
     mail: str = None
     categorie: str = None
+
+    def to_dict(self):
+        return {"mail": self.mail, "categorie": self.categorie}
+
+    @staticmethod
+    def from_dict(d):
+        if d is None:
+            return None
+        return Personne(mail=d.get("mail"), categorie=d.get("categorie"))
 
     @staticmethod
     def from_dict(d):
@@ -143,95 +155,6 @@ class Seance:
         return out
 
 
+# Note: Les fonctions load/save ont été déplacées vers database.py
+# Les fonctions métier ont été déplacées vers services.py
 
-
-# Helper loaders
-
-
-def load_json(path):
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_json(path, data):
-    """Sauvegarde des données JSON dans un fichier."""
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-
-def load_personnes(path):
-    data = load_json(str(path))
-    return [Personne.from_dict(d) for d in data]
-
-
-def load_films(path):
-    data = load_json(str(path))
-    return [Film.from_dict(d) for d in data]
-
-
-def load_salles(path):
-    data = load_json(str(path))
-    return [Salle.from_dict(d) for d in data]
-
-
-def load_seances(path):
-    data = load_json(str(path))
-    return [Seance.from_dict(d) for d in data]
-
-
-def save_seances(path, seances):
-    """Sauvegarde la liste des séances dans le fichier JSON."""
-    data = [s.to_dict() for s in seances]
-    save_json(path, data)
-
-
-def load_places(path):
-    """Charge le fichier des places pour une séance."""
-    if path is None:
-        return None
-    try:
-        data = load_json(path)
-        return [Place.from_dict(p) for p in data]
-    except FileNotFoundError:
-        return None
-
-
-def save_places(path, places):
-    """Sauvegarde les places dans un fichier JSON."""
-    data = [p.to_dict() for p in places]
-    save_json(path, data)
-
-
-def create_places_for_seance(seance, salle_data):
-	"""Crée une grille de places vide pour une séance basée sur la salle.
-	salle_data est un dict contenant row et column."""
-	rows = salle_data.get("row", 10)  # valeur par défaut 10
-	cols = salle_data.get("column", 10)
-	places = []
-	for r in range(1, rows + 1):
-		for c in range(1, cols + 1):
-			places.append(Place(row=r, column=c, estOccupee=False, codeReservation=None))
-	return places
-
-def save_reservation(path, reservation):
-    """Ajoute une nouvelle réservation au fichier JSON. Crée le fichier s'il n'existe pas."""
-    import os
-    
-    # Créer le dossier parent si nécessaire
-    directory = os.path.dirname(path)
-    if directory and not os.path.exists(directory):
-        os.makedirs(directory)
-    
-    # Charger les réservations existantes ou créer une liste vide
-    try:
-        reservations = load_json(path)
-    except FileNotFoundError:
-        reservations = []
-    
-    reservations.append(reservation)
-    save_json(path, reservations)
-
-
-def generate_ticket_code():
-    import uuid
-    return str(uuid.uuid4())
