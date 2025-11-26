@@ -15,6 +15,11 @@ def load_json(path):
 
 def save_json(path, data):
 	"""Sauvegarde des données dans un fichier JSON."""
+	# Créer le dossier parent si nécessaire
+	directory = os.path.dirname(path)
+	if directory and not os.path.exists(directory):
+		os.makedirs(directory)
+	
 	with open(path, "w", encoding="utf-8") as f:
 		json.dump(data, f, indent=2, ensure_ascii=False)
 
