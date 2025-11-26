@@ -1,0 +1,44 @@
+[
+  {
+    "numSalle": 1,
+    "nbPlaces": 100,
+    "type": "Standard",
+    "column": 10,
+    "row": 10
+  },
+  {
+    "numSalle": 2,
+    "nbPlaces": 100,
+    "type": "Standard",
+    "column": 10,
+    "row": 10
+  },
+  {
+    "numSalle": 3,
+    "nbPlaces": 100,
+    "type": "Standard",
+    "column": 10,
+    "row": 10
+  },
+  {
+    "numSalle": 4,
+    "nbPlaces": 100,
+    "type": "Standard",
+    "column": 10,
+    "row": 10
+  },
+  {
+    "numSalle": 5,
+    "nbPlaces": 100,
+    "type": "3D",
+    "column": 10,
+    "row": 10
+  },
+  {
+    "numSalle": 6,
+    "nbPlaces": 100,
+    "type": "Imax",
+    "column": 10,
+    "row": 10
+  }
+]
