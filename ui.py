@@ -8,6 +8,7 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import os
 import shutil
+import sys
 
 from database import load_films, load_salles, load_seances
 from services import (
@@ -68,6 +69,7 @@ class CinemaApp:
         self.places_file_path = None
         self.salle = None
         self.salle_data = None
+        self.redirect_timer = None  # Timer pour la redirection automatique
         
         # Conteneur principal
         self.main_frame = tk.Frame(root, bg="#1a1a1a")
@@ -511,8 +513,8 @@ class CinemaApp:
         # Créer l'objet personne
         personne = Personne(mail=email, categorie=categorie)
         
-        # Sauvegarder la réservation
-        save_reservation_data(
+        # Sauvegarder la réservation et récupérer le chemin du QR code et du PDF
+        qrcode_path, pdf_path = save_reservation_data(
             self.selected_seance,
             self.places_file_path,
             self.places,
@@ -527,11 +529,26 @@ class CinemaApp:
         )
         
         # Afficher le ticket
-        self.show_ticket(code, personne)
+        self.show_ticket(code, personne, qrcode_path, pdf_path)
     
-    def show_ticket(self, code, personne):
+    def show_ticket(self, code, personne, qrcode_path, pdf_path):
         """Affiche le ticket de réservation."""
         self.clear_frame()
+        
+        # Ouvrir automatiquement le PDF (il est déjà vérifié dans services.py)
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                # Convertir en chemin absolu
+                abs_pdf_path = os.path.abspath(pdf_path)
+                
+                if sys.platform == 'win32':
+                    os.startfile(abs_pdf_path)
+                elif sys.platform == 'darwin':  # macOS
+                    os.system(f'open "{abs_pdf_path}"')
+                else:  # Linux
+                    os.system(f'xdg-open "{abs_pdf_path}"')
+            except Exception as e:
+                print(f"Erreur lors de l'ouverture du PDF: {e}")
         
         # Titre
         title = tk.Label(
@@ -560,8 +577,9 @@ class CinemaApp:
         Catégorie: {personne.categorie}
         Prix: {self.prix:.2f} €
         
-        Présentez ce code à l'entrée pour scanner
-        et accéder à la salle. Bon film !
+        Votre e-billet PDF a été ouvert automatiquement.
+        Présentez-le à l'entrée pour accéder à la salle.
+        Bon film !
         """
         
         tk.Label(
@@ -575,20 +593,47 @@ class CinemaApp:
             pady=30
         ).pack()
         
-        # Bouton nouvelle réservation
+        # Message de redirection
+        redirect_msg = tk.Label(
+            self.main_frame,
+            text="Redirection automatique vers l'accueil dans 10 secondes...",
+            font=("Arial", 10),
+            bg="#1a1a1a",
+            fg="#aaa"
+        )
+        redirect_msg.pack(pady=10)
+        
+        # Redirection automatique après 10 secondes
+        self.redirect_timer = self.root.after(10000, self.reset)
+        
+        # Bouton nouvelle réservation (pour redirection immédiate)
         tk.Button(
             self.main_frame,
             text="Nouvelle réservation",
-            command=self.reset,
+            command=self.cancel_and_reset,
             bg="#d32f2f",
             fg="white",
             font=("Arial", 14, "bold"),
             width=25,
             height=2
-        ).pack(pady=30)
+        ).pack(pady=20)
+    
+    def cancel_and_reset(self):
+        """Annule le timer de redirection et réinitialise l'application."""
+        # Annuler la redirection automatique si elle existe
+        if self.redirect_timer:
+            self.root.after_cancel(self.redirect_timer)
+            self.redirect_timer = None
+        # Réinitialiser l'application
+        self.reset()
     
     def reset(self):
         """Réinitialise l'application pour une nouvelle réservation."""
+        # Annuler le timer s'il existe encore
+        if self.redirect_timer:
+            self.root.after_cancel(self.redirect_timer)
+            self.redirect_timer = None
+            
         self.selected_film = None
         self.selected_seance = None
         self.selected_place = None
