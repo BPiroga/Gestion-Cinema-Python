@@ -632,3 +632,6 @@ if __name__ == "__main__":
 #on doit me proposer l'heure de fin de la seance que je chevauche pour le debut,
 #dans ce cas c'est 16h50 et apres si mon film se terminerais à 18h mais que j'avais deja une seance à 17h30,
 #faut que ça decale cette seance à la fin de cette seance donc 18h, tu vois ce que je veux dire ?
+
+#faut limiter la journée à 12h max, genre de 10h à 22h
+#et si on depasse cette limite en décalant les séances, faut refuser la modification
