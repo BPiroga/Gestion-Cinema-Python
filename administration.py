@@ -1,11 +1,6 @@
 """
-Interface d'administration (GUI Tkinter) pour gérer les films et les séances.
-
-Fonctionnalités implémentées :
-- Liste / ajout / suppression de films
-- Liste / ajout / suppression de séances
-
-Utilise les utilitaires de `database.py` pour charger et sauvegarder les JSON.
+Interface d'administration (GUI Tkinter) pour gérer l'ajout et la suppression de films et des séances.
+Utilisation des utilitaires de `database.py` pour charger et sauvegarder les JSON.
 """
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -24,7 +19,7 @@ from database import (
 )
 from models import Film, Seance
 
-
+''' constantes des chemins de la base de données '''
 DB_FILMS = "Database/Films.json"
 DB_SALLES = "Database/Salles.json"
 DB_SEANCES = "Database/Seances.json"
@@ -35,18 +30,18 @@ class AdminApp:
 	def __init__(self, root):  
 		self.root = root
 		self.root.title("Administration - Gestion Cinéma")
-		self.root.state('zoomed')  # Plein écran
+		self.root.state('zoomed')  # plein écran
 
-		# Charger données
+		# charger les données
 		self.films = load_films(DB_FILMS)
 		self.salles = load_salles(DB_SALLES)
 		self.seances = load_seances(DB_SEANCES)
 
-		# Notebook
+		# notebook
 		self.nb = ttk.Notebook(root)
 		self.nb.pack(fill=tk.BOTH, expand=True)
 
-		# Onglets
+		# onglets
 		self.tab_films = ttk.Frame(self.nb)
 		self.tab_seances = ttk.Frame(self.nb)
 
@@ -56,13 +51,13 @@ class AdminApp:
 		self._build_films_tab()
 		self._build_seances_tab()
 
-		# Bouton "Valider la journée" en bas
+		# bouton "Valider la journée" en bas
 		footer_frame = tk.Frame(root)
 		footer_frame.pack(fill=tk.X, padx=10, pady=10)
 
 		tk.Button(
 			footer_frame,
-			text="Valider journée",
+			text="Valider la journée",
 			command=self.validate_and_open_ui,
 			bg="#4CAF50",
 			fg="white",
@@ -84,9 +79,9 @@ class AdminApp:
 		btn_frame = tk.Frame(left)
 		btn_frame.pack(fill=tk.X, pady=6)
 
-		tk.Button(btn_frame, text="Supprimer film", command=self.delete_selected_film).pack(side=tk.LEFT)
+		tk.Button(btn_frame, text="Supprimer un film", command=self.delete_selected_film).pack(side=tk.LEFT)
 
-		# Formulaire ajout
+		# formulaire ajout
 		right = tk.Frame(frame)
 		right.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
 
@@ -100,7 +95,7 @@ class AdminApp:
 		self.entry_rea = tk.Entry(right, width=30)
 		self.entry_rea.pack()
 
-		tk.Label(right, text="Durée (min):").pack(anchor=tk.W)
+		tk.Label(right, text="Durée (en minutes):").pack(anchor=tk.W)
 		self.entry_duree = tk.Entry(right, width=10)
 		self.entry_duree.pack()
 
@@ -139,24 +134,25 @@ class AdminApp:
 			messagebox.showerror("Erreur", "La durée doit être un entier (minutes).")
 			return
 
-		# Copier la cover dans media/images/covers si fournie
+		# copier la cover dans media/images/covers si fournie
 		cover_path = None
 		if cover_source:
 			try:
 				if not os.path.exists(COVERS_DIR):
 					os.makedirs(COVERS_DIR)
-				# Extraire le nom du fichier
+				# extraire le nom du fichier
 				filename = os.path.basename(cover_source)
 				dest_path = os.path.join(COVERS_DIR, filename)
-				# Traiter l'image (vérifier ratio et recadrer si nécessaire)
+				# traiter l'image (vérifier le ratio et recadrer si nécessaire, 
+				                                # par exemple si l'image est plutôt carrée ça la coupe un peu pour qu'elle s'affiche bien)
 				self._crop_image_if_needed(cover_source, dest_path, ratio_threshold=0.7)
-				# Sauvegarder le chemin relatif
+				# sauvegarder le chemin relatif
 				cover_path = f"./{COVERS_DIR}/{filename}".replace("\\", "/")
 			except Exception as e:
 				messagebox.showerror("Erreur", f"Impossible de copier/traiter la cover: {e}")
 				return
 
-		# Calculer nouvel id
+		# calculer nouvel id
 		max_id = max((f.id for f in self.films if f.id is not None), default=0)
 		new_id = max_id + 1
 
@@ -164,10 +160,10 @@ class AdminApp:
 		self.films.append(film)
 		save_films(DB_FILMS, self.films)
 		self._refresh_films_list()
-		# Synchroniser le combo des films dans l'onglet séances
+		# synchroniser le combo des films dans l'onglet séances
 		self._refresh_film_combo()
 
-		# Clear form
+		# clear form
 		self.entry_nom.delete(0, tk.END)
 		self.entry_rea.delete(0, tk.END)
 		self.entry_duree.delete(0, tk.END)
@@ -184,28 +180,28 @@ class AdminApp:
 		if not messagebox.askyesno("Confirmer", f"Supprimer le film '{film.nom}' ?"):
 			return
 
-		# Supprimer l'image de cover si elle existe
+		# supprimer l'image de cover si elle existe
 		if film.cover:
 			try:
-				# Convertir le chemin relatif en chemin absolu
+				# convertir le chemin relatif en chemin absolu
 				cover_path = film.cover.replace("./", "").replace("\\", "/")
 				if os.path.exists(cover_path):
 					os.remove(cover_path)
 			except Exception as e:
-				# Log l'erreur mais continue la suppression du film
+				# log l'erreur mais continue la suppression du film
 				print(f"Erreur lors de la suppression de l'image: {e}")
 
-		# Supprimer toutes les séances associées à ce film
+		# supprimer toutes les séances associées à ce film
 		self.seances = [s for s in self.seances if s.filmId != film.id]
 		save_seances(DB_SEANCES, self.seances)
 
-		# Supprimer et sauvegarder
+		# supprimer et sauvegarder
 		del self.films[idx]
 		save_films(DB_FILMS, self.films)
 		self._refresh_films_list()
-		# Synchroniser le combo des films dans l'onglet séances
+		# synchroniser le combo des films dans l'onglet séances
 		self._refresh_film_combo()
-		# Rafraîchir la liste et l'emploi du temps des séances
+		# rafraîchir la liste et l'emploi du temps des séances
 		self._refresh_seances_list()
 		self.show_schedule_for_day()
 
@@ -231,7 +227,7 @@ class AdminApp:
 			ratio = width / height if height > 0 else 1.0
 
 			if ratio > ratio_threshold:
-				# Recadrer en gardant la hauteur, réduire la largeur
+				# recadrer en gardant la hauteur, réduire la largeur
 				new_width = int(height * ratio_threshold)
 				left = (width - new_width) // 2
 				top = 0
@@ -239,7 +235,7 @@ class AdminApp:
 				bottom = height
 				img = img.crop((left, top, right, bottom))
 
-			# Sauvegarder l'image (avec conversion automatique du format)
+			# sauvegarder l'image (avec conversion automatique du format)
 			img.save(dest_path, quality=90)
 		except Exception as e:
 			raise Exception(f"Erreur lors du traitement de l'image: {e}")
@@ -248,11 +244,11 @@ class AdminApp:
 	def _build_seances_tab(self):
 		frame = self.tab_seances
 
-		# Frame supérieur : liste + formulaire côte à côte
+		# frame supérieur : liste + formulaire côte à côte
 		top_frame = tk.Frame(frame)
 		top_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-		# Côté gauche : liste des séances
+		# côté gauche : liste des séances
 		left = tk.Frame(top_frame)
 		left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
@@ -265,9 +261,9 @@ class AdminApp:
 		btn_frame = tk.Frame(left)
 		btn_frame.pack(fill=tk.X, pady=6)
 
-		tk.Button(btn_frame, text="Supprimer séance", command=self.delete_selected_seance).pack(side=tk.LEFT)
+		tk.Button(btn_frame, text="Supprimer une séance", command=self.delete_selected_seance).pack(side=tk.LEFT)
 
-		# Côté droit : formulaire ajout séance
+		# côté droit : formulaire ajout séance
 		right = tk.Frame(top_frame)
 		right.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
 
@@ -287,18 +283,18 @@ class AdminApp:
 		self.entry_horaire = tk.Entry(right, width=20)
 		self.entry_horaire.pack()
 
-		tk.Button(right, text="Ajouter séance", command=self.add_seance).pack(pady=8)
+		tk.Button(right, text="Ajouter une séance", command=self.add_seance).pack(pady=8)
 
-		# Frame inférieur : emploi du temps pleine largeur
+		# frame inférieur : emploi du temps pleine largeur
 		bottom_frame = tk.Frame(frame)
 		bottom_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
 		tk.Label(bottom_frame, text="Emploi du temps de la journée", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
 
-		# Cadre pour l'emploi du temps (scrollable horizontalement si besoin)
+		# cadre pour l'emploi du temps (scrollable horizontalement si besoin)
 		self.schedule_container = tk.Frame(bottom_frame)
 		self.schedule_container.pack(fill=tk.BOTH, expand=True, pady=6)
-		# Afficher l'emploi du temps dès le chargement de l'onglet
+		# afficher l'emploi du temps dès le chargement de l'onglet
 		self.show_schedule_for_day()
 
 	def _refresh_seances_list(self):
@@ -317,20 +313,20 @@ class AdminApp:
 		"""Affiche un tableau salles x créneaux pour le jour donné.
 
 		Les colonnes sont les horaires présents, les lignes sont les salles.
-		On ignore complètement la date (paramètre day) et on prend toutes les séances.
+		On ignore complètement la date (paramètre day) et on prend toutes les séances, comme on garde le même emploi du temps pour chaque jour.
 		Une ligne d'horaires au-dessus de chaque salle, puis les séances.
 		"""
 		# vider l'ancien contenu
 		for w in self.schedule_container.winfo_children():
 			w.destroy()
 
-		# Prendre TOUTES les séances, peu importe la date
+		# prendre TOUTES les séances, peu importe la date
 		day_seances = list(self.seances)
 		if not day_seances:
 			tk.Label(self.schedule_container, text="Aucune séance disponible.").pack()
 			return
 
-		# Normaliser tous les horaires au format HH:MM:SS avant de les utiliser
+		# normaliser tous les horaires au format HH:MM:SS avant de les utiliser
 		for seance in day_seances:
 			try:
 				seance.horaire = self._normalize_horaire(seance.horaire)
@@ -348,14 +344,14 @@ class AdminApp:
 		# rows (avec ligne d'horaires avant chaque salle)
 		row_idx = 0
 		for salle in salles:
-			# Ligne d'horaires pour cette salle
+			# ligne d'horaires pour cette salle
 			lbl = tk.Label(inner, text='', width=10, height=1)
 			lbl.grid(row=row_idx, column=0, sticky='nsew')
 			
 			for c_idx, t in enumerate(times, start=1):
 				se = next((s for s in day_seances if s.salleNum == salle.numSalle and s.horaire == t), None)
 				if se:
-					# Extraire horaires pour cette séance
+					# extraire horaires pour cette séance
 					film_obj = next((f for f in self.films if f.id == se.filmId), None)
 					duree = film_obj.duree if film_obj and film_obj.duree else 90
 					
@@ -375,17 +371,17 @@ class AdminApp:
 				lbl.grid(row=row_idx, column=c_idx, sticky='nsew')
 			row_idx += 1
 			
-			# Ligne salle + séances (sans horaires)
+			# ligne salle + séances (sans horaires)
 			lbl = tk.Label(inner, text=f"Salle {salle.numSalle}", borderwidth=1, relief='solid', width=10, height=5, font=("Arial", 10), bg='lightgray')
 			lbl.grid(row=row_idx, column=0, sticky='nsew')
 			for c_idx, t in enumerate(times, start=1):
 				se = next((s for s in day_seances if s.salleNum == salle.numSalle and s.horaire == t), None)
 				if se:
-					# Avec bordure pour séances existantes, affiche film seulement (pas d'horaires)
+					# avec bordure pour séances existantes, affiche seulement le film (pas d'horaires)
 					film = next((f.nom for f in self.films if f.id == se.filmId), '—')
 					lbl = tk.Label(inner, text=film, borderwidth=1, relief='solid', width=12, height=5, font=("Arial", 9), wraplength=80, justify='center')
 				else:
-					# Sans bordure pour cases vides (juste fond blanc)
+					# sans bordure pour cases vides (juste fond blanc)
 					lbl = tk.Label(inner, text='', bg='white', width=12, height=5)
 				lbl.grid(row=row_idx, column=c_idx, sticky='nsew')
 			row_idx += 1
@@ -414,10 +410,10 @@ class AdminApp:
 			if ':' in horaire:
 				parts = horaire.split(':')
 				if len(parts) == 2:
-					# Format HH:MM -> HH:MM:00
+					# format HH:MM -> HH:MM:00
 					return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}:00"
 				elif len(parts) == 3:
-					# Format HH:MM:SS
+					# format HH:MM:SS
 					return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}:{parts[2].zfill(2)}"
 			raise ValueError("Horaire invalide")
 		except (ValueError, IndexError):
@@ -439,13 +435,13 @@ class AdminApp:
 		
 		fin_min = debut_min + film_duration + 20  # +20 min buffer
 		
-		# Convertir minutes en HH:MM:SS
+		# convertir minutes en HH:MM:SS
 		def min_to_horaire(minutes):
 			h = minutes // 60
 			m = minutes % 60
 			return f"{h:02d}:{m:02d}:00"
 		
-		# Étape 1: Vérifier s'il y a un conflit avec l'horaire demandé
+		# Étape 1: vérifier s'il y a un conflit avec l'horaire demandé
 		conflit_seance = None
 		for seance in self.seances:
 			if seance.salleNum != salle_num:
@@ -459,24 +455,24 @@ class AdminApp:
 				s_duree = film_obj.duree if film_obj else 90
 				s_fin_min = s_debut_min + s_duree + 20
 				
-				# Si l'horaire demandé chevauche cette séance
+				# si l'horaire demandé chevauche cette séance
 				if not (fin_min <= s_debut_min or debut_min >= s_fin_min):
 					conflit_seance = (seance, s_debut_min, s_fin_min)
 					break
 			except (ValueError, AttributeError):
 				continue
 		
-		# S'il n'y a pas de conflit, pas de modifications
+		# s'il n'y a pas de conflit, pas de modifications
 		if conflit_seance is None:
 			return (horaire_debut, [], False)
 		
-		# Étape 2: Il y a un conflit, proposer l'horaire de fin de la séance qui chevauche
+		# Étape 2: il y a un conflit, proposer l'horaire de fin de la séance qui chevauche
 		conflicting_seance, _, s_fin_min = conflit_seance
 		proposed_debut_min = s_fin_min
 		proposed_fin_min = proposed_debut_min + film_duration + 20
 		proposed_horaire = min_to_horaire(proposed_debut_min)
 		
-		# Étape 3: Vérifier récursivement si ce nouvel horaire impacte les séances suivantes
+		# Étape 3: vérifier récursivement si ce nouvel horaire impacte les séances suivantes
 		seances_a_decaler = []
 		
 		def find_cascading_shifts(current_debut_min, current_fin_min, processed_seances=None):
@@ -498,16 +494,16 @@ class AdminApp:
 					s_duree = film_obj.duree if film_obj else 90
 					s_fin_min = s_debut_min + s_duree + 20
 					
-					# Si cette séance chevauche l'horaire proposé
+					# si cette séance chevauche l'horaire proposé
 					if not (current_fin_min <= s_debut_min or current_debut_min >= s_fin_min):
-						# Décaler cette séance après le nouvel horaire
+						# décaler cette séance après le nouvel horaire
 						processed_seances.add(id(seance))
 						new_debut_min = current_fin_min
 						new_fin_min = new_debut_min + s_duree + 20
 						
 						shifts.append((seance, min_to_horaire(new_debut_min)))
 						
-						# Vérifier récursivement les séances suivantes
+						# vérifier récursivement les séances suivantes
 						further_shifts = find_cascading_shifts(new_debut_min, new_fin_min, processed_seances)
 						shifts.extend(further_shifts)
 				except (ValueError, AttributeError):
@@ -517,12 +513,12 @@ class AdminApp:
 		
 		seances_a_decaler = find_cascading_shifts(proposed_debut_min, proposed_fin_min)
 		
-		# Étape 4: Afficher un message de confirmation seulement s'il y a des décalages
+		# Étape 4: afficher un message de confirmation seulement s'il y a des décalages
 		if not seances_a_decaler:
-			# Pas de décalages nécessaires, utiliser l'horaire proposé
+			# pas de décalages nécessaires, utiliser l'horaire proposé
 			return (proposed_horaire, [], False)
 		
-		# Des décalages sont nécessaires, demander confirmation
+		# des décalages sont nécessaires, demander confirmation
 		msg = "Conflit détecté !\n\n"
 		msg += f"Horaire demandé: {horaire_debut}\n"
 		msg += f"Horaire proposé (fin du film conflictuel): {proposed_horaire}\n\n"
@@ -535,12 +531,12 @@ class AdminApp:
 		result = messagebox.askyesno("Décalage de séances", msg)
 		
 		if result:
-			# Appliquer les changements
+			# appliquer les changements
 			for seance, new_horaire in seances_a_decaler:
 				seance.horaire = new_horaire
 			return (proposed_horaire, seances_a_decaler, True)
 		else:
-			# L'utilisateur refuse, revenir au choix manuel
+			# l'utilisateur refuse, revenir au choix manuel
 			return (None, [], False)
 
 	def add_seance(self):
@@ -555,24 +551,24 @@ class AdminApp:
 		film_id = int(film_sel.split(" - ")[0])
 		salle_num = int(salle_sel)
 
-		# Normaliser l'horaire au format HH:MM:SS
+		# normaliser l'horaire au format HH:MM:SS
 		try:
 			horaire = self._normalize_horaire(horaire)
 		except ValueError as e:
 			messagebox.showerror("Erreur", str(e))
 			return
 
-		# Vérifier les conflits et proposer des solutions
+		# vérifier les conflits et proposer des solutions
 		film_obj = next((f for f in self.films if f.id == film_id), None)
 		film_duree = film_obj.duree if film_obj else 90
 		
 		final_horaire, seances_a_decaler, accepte_decalage = self._get_next_available_slot(salle_num, horaire, film_duree)
 		
 		if final_horaire is None:
-			# Utilisateur a refusé toutes les solutions
+			# utilisateur a refusé toutes les solutions
 			return
 		
-		# Si des séances doivent être décalées, les modifier
+		# si des séances doivent être décalées, les modifier
 		if seances_a_decaler:
 			for seance, new_horaire in seances_a_decaler:
 				seance.horaire = new_horaire
@@ -581,16 +577,16 @@ class AdminApp:
 		max_id = max((s.id for s in self.seances if s.id is not None), default=0)
 		new_id = max_id + 1
 
-		# Créer la nouvelle séance
+		# créer la nouvelle séance
 		jour = "01-01-2000"
 		seance = Seance(id=new_id, jour=jour, horaire=final_horaire, filmId=film_id, salleNum=salle_num)
 		self.seances.append(seance)
 		save_seances(DB_SEANCES, self.seances)
 		self._refresh_seances_list()
-		# Synchroniser l'emploi du temps
+		# synchroniser l'emploi du temps
 		self.show_schedule_for_day()
 
-		# Clear inputs
+		# clear inputs
 		self.entry_horaire.delete(0, tk.END)
 
 	def delete_selected_seance(self):
@@ -606,17 +602,17 @@ class AdminApp:
 		del self.seances[idx]
 		save_seances(DB_SEANCES, self.seances)
 		self._refresh_seances_list()
-		# Synchroniser l'emploi du temps
+		# synchroniser l'emploi du temps
 		self.show_schedule_for_day()
 
 	def validate_and_open_ui(self):
 		"""Ferme l'interface admin et ouvre l'interface client (réservation)."""
 		messagebox.showinfo("Journée validée", "Passage à l'interface client de réservation...")
 		
-		# Fermer la fenêtre d'administration
+		# fermer la fenêtre d'administration
 		self.root.destroy()
 		
-		# Lancer l'interface de réservation (ui.py)
+		# lancer l'interface de réservation (ui.py)
 		try:
 			subprocess.Popen([sys.executable, "ui.py"])
 		except Exception as e:
