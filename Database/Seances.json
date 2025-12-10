@@ -2,7 +2,7 @@
   {
     "id": 1,
     "jour": "22-10-2025",
-    "horaire": "13:00:00",
+    "horaire": "15:06:00",
     "filmId": 1,
     "salleNum": 1,
     "placesFile": "Database/cache/seance_1_places.json"
@@ -24,7 +24,7 @@
   {
     "id": 4,
     "jour": "22-10-2025",
-    "horaire": "17:40:00",
+    "horaire": "21:44:00",
     "filmId": 4,
     "salleNum": 4
   },
@@ -67,9 +67,10 @@
   {
     "id": 10,
     "jour": "22-10-2025",
-    "horaire": "19:45:00",
+    "horaire": "21:44:00",
     "filmId": 10,
-    "salleNum": 4
+    "salleNum": 4,
+    "placesFile": "Database/cache/seance_10_places.json"
   },
   {
     "id": 11,
@@ -85,5 +86,28 @@
     "horaire": "09:30:00",
     "filmId": 2,
     "salleNum": 6
+  },
+  {
+    "id": 13,
+    "jour": "22-10-2025",
+    "horaire": "20:42:00",
+    "filmId": 11,
+    "salleNum": 1,
+    "placesFile": "Database/cache/seance_13_places.json"
+  },
+  {
+    "id": 14,
+    "jour": "01-01-2000",
+    "horaire": "09:30:00",
+    "filmId": 12,
+    "salleNum": 2,
+    "placesFile": "Database/cache/seance_14_places.json"
+  },
+  {
+    "id": 16,
+    "jour": "01-01-2000",
+    "horaire": "13:00:00",
+    "filmId": 13,
+    "salleNum": 3
   }
 ]

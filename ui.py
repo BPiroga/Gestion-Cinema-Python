@@ -608,3 +608,15 @@ class CinemaApp:
         clear_cache()
         # Fermer la fenêtre
         self.root.destroy()
+
+
+def main():
+    """Lance l'application de réservation de cinéma."""
+    root = tk.Tk()
+    app = CinemaApp(root)
+    root.protocol("WM_DELETE_WINDOW", app.on_closing)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
