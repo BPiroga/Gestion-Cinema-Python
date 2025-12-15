@@ -336,10 +336,17 @@ class AdminApp:
 		times = sorted({s.horaire for s in day_seances})
 		salles = sorted(self.salles, key=lambda s: s.numSalle)
 
-		# canvas scrollable horizontal
-		canvas = tk.Canvas(self.schedule_container, height=500, bg='white')
+		# Frame principal avec scrollbars
+		main_frame = tk.Frame(self.schedule_container)
+		main_frame.pack(fill=tk.BOTH, expand=True)
+
+		# Canvas avec scrollbars
+		canvas = tk.Canvas(main_frame, height=500, bg='white')
+		vbar = ttk.Scrollbar(main_frame, orient='vertical', command=canvas.yview)
+		
 		inner = tk.Frame(canvas, bg='white')
 		canvas.create_window((0, 0), window=inner, anchor='nw')
+		canvas.configure(yscrollcommand=vbar.set)
 
 		# rows (avec ligne d'horaires avant chaque salle)
 		row_idx = 0
@@ -388,8 +395,14 @@ class AdminApp:
 
 		inner.update_idletasks()
 		canvas.config(scrollregion=canvas.bbox("all"))
-		canvas.pack(fill='both', expand=True)
-
+		
+		# Grid layout pour la scrollbar
+		canvas.grid(row=0, column=0, sticky='nsew')
+		vbar.grid(row=0, column=1, sticky='ns')
+		
+		main_frame.grid_rowconfigure(0, weight=1)
+		main_frame.grid_columnconfigure(0, weight=1)
+	
 	def _refresh_film_combo(self):
 		self.films = load_films(DB_FILMS)
 		values = [f"{f.id} - {f.nom}" for f in self.films]
@@ -627,11 +640,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
-#toujours pas, en fait, si y a un film qui se termine à 16h50, moi je choisi 16h30, 
-#on doit me proposer l'heure de fin de la seance que je chevauche pour le debut,
-#dans ce cas c'est 16h50 et apres si mon film se terminerais à 18h mais que j'avais deja une seance à 17h30,
-#faut que ça decale cette seance à la fin de cette seance donc 18h, tu vois ce que je veux dire ?
-
-#faut limiter la journée à 12h max, genre de 10h à 22h
-#et si on depasse cette limite en décalant les séances, faut refuser la modification
