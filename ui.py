@@ -298,14 +298,16 @@ class CinemaApp:
         seances_frame.pack(pady=20)
         
         for seance in film_seances:
+            salle = find_salle(self.salles, seance)
+            salle_type = salle.type if salle else "Standard"
             btn = tk.Button(
                 seances_frame,
-                text=f"{seance.jour} à {seance.horaire} - Salle {seance.salleNum}",
+                text=f"{seance.jour} à {seance.horaire} - Salle {seance.salleNum} ({salle_type})",
                 command=lambda s=seance: self.select_seance(s),
                 bg="#2a2a2a",
                 fg="white",
                 font=("Arial", 12),
-                width=40,
+                width=50,
                 height=2,
                 cursor="hand2"
             )
@@ -446,11 +448,25 @@ class CinemaApp:
         self.selected_place = place
         self.show_user_info()
     
+    def validate_email_realtime(self, event):
+        """Valide l'email en temps réel et affiche les erreurs."""
+        email = self.email_entry.get().strip()
+        
+        if not email:
+            self.email_error.config(text="", fg="#ff6b6b")
+            return
+        
+        # Vérifier format email
+        if "@" not in email or "." not in email.split("@")[-1]:
+            self.email_error.config(text="Format invalide: utilisez example@domaine.com", fg="#ff6b6b")
+        else:
+            self.email_error.config(text="✓ Valide", fg="#4CAF50")
+    
     def show_user_info(self):
         """Affiche le formulaire de saisie des informations utilisateur."""
         self.clear_frame()
         
-        # Prix selon le type de salle
+        # Prix selon le type de salle sélectionné
         type_tarif = {"Standard": 10.0, "3D": 12.0, "Imax": 15.0}
         prix_base = type_tarif.get(self.salle.type, 10.0)
         
@@ -467,7 +483,7 @@ class CinemaApp:
         )
         title.pack(pady=20)
         
-        # Récapitulatif avec label de prix dynamique
+        # Récapitulatif 
         recap = tk.Label(
             self.main_frame,
             text=f"Film: {self.selected_film.nom}\n"
@@ -502,12 +518,19 @@ class CinemaApp:
         self.email_entry = tk.Entry(form_frame, font=("Arial", 12), width=30)
         self.email_entry.grid(row=0, column=1, pady=10, padx=10)
         
+        # Label d'erreur email
+        self.email_error = tk.Label(form_frame, text="", font=("Arial", 10), bg="#1a1a1a", fg="#ff6b6b")
+        self.email_error.grid(row=1, column=1, sticky=tk.W, padx=10)
+        
+        # Bind event pour valider l'email en temps réel
+        self.email_entry.bind("<KeyRelease>", self.validate_email_realtime)
+        
         # Catégorie
-        tk.Label(form_frame, text="Catégorie:", font=("Arial", 12), bg="#1a1a1a", fg="white").grid(row=1, column=0, sticky=tk.W, pady=10)
+        tk.Label(form_frame, text="Catégorie:", font=("Arial", 12), bg="#1a1a1a", fg="white").grid(row=2, column=0, sticky=tk.W, pady=10)
         
         self.categorie_var = tk.StringVar(value="adulte")
         categorie_frame = tk.Frame(form_frame, bg="#1a1a1a")
-        categorie_frame.grid(row=1, column=1, sticky=tk.W)
+        categorie_frame.grid(row=2, column=1, sticky=tk.W)
         
         def update_price(*args):
             """Met à jour le prix en fonction de la catégorie sélectionnée."""
@@ -585,9 +608,11 @@ class CinemaApp:
         email = self.email_entry.get().strip()
         categorie = self.categorie_var.get()
         
-        # Validation email simple
+        # Validation email
         if not email or "@" not in email or "." not in email.split("@")[-1]:
-            messagebox.showerror("Erreur", "Veuillez entrer un e-mail valide.")
+            # Focus sur le champ et affiche l'erreur
+            self.email_error.config(text="Format invalide: utilisez example@domaine.com", fg="#ff6b6b")
+            self.email_entry.focus()
             return
         
         # Générer le code de réservation

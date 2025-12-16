@@ -12,14 +12,16 @@
     "jour": "22-10-2025",
     "horaire": "14:40:00",
     "filmId": 2,
-    "salleNum": 2
+    "salleNum": 2,
+    "placesFile": "Database/cache/seance_2_places.json"
   },
   {
     "id": 3,
     "jour": "22-10-2025",
     "horaire": "15:45:00",
     "filmId": 3,
-    "salleNum": 3
+    "salleNum": 3,
+    "placesFile": "Database/cache/seance_3_places.json"
   },
   {
     "id": 4,
@@ -84,6 +86,7 @@
     "jour": "22-10-2025",
     "horaire": "09:30:00",
     "filmId": 2,
-    "salleNum": 6
+    "salleNum": 6,
+    "placesFile": "Database/cache/seance_12_places.json"
   }
 ]
