@@ -25,6 +25,12 @@ DB_SALLES = "Database/Salles.json"
 DB_SEANCES = "Database/Seances.json"
 COVERS_DIR = "media/images/covers"
 
+''' constantes de gestion horaire '''
+JOURNEE_START_MIN = 9 * 60  # 09:00 (540 minutes)
+JOURNEE_END_MIN = 24 * 60    # 24:00 / 00:00 (1440 minutes)
+MAX_HORAIRE_HEURE = 23       # 23:59 max
+MAX_HORAIRE_MIN = 59
+
 
 class AdminApp:
 	def __init__(self, root):  
@@ -432,6 +438,31 @@ class AdminApp:
 		except (ValueError, IndexError):
 			raise ValueError("Format d'horaire invalide (utilisez HH:MM ou HH:MM:SS).")
 
+	def _min_to_horaire(self, minutes, allow_overflow=False):
+		"""
+		Convertit les minutes (depuis minuit) en format HH:MM:SS.
+		Si allow_overflow=True, on représente les heures > 24 (ex: 1500 min = 25:00)
+		Sinon, on retourne None si dépassement de 24h.
+		"""
+		if minutes < 0:
+			return None
+		
+		h = minutes // 60
+		m = minutes % 60
+		
+		if not allow_overflow and h >= 24:
+			return None  # Dépassement de 24h
+		
+		return f"{h:02d}:{m:02d}:00"
+	
+	def _horaire_to_min(self, horaire):
+		"""Convertit un horaire HH:MM:SS en minutes depuis minuit."""
+		try:
+			h, m, s = map(int, horaire.split(':'))
+			return h * 60 + m
+		except (ValueError, AttributeError):
+			return None
+
 	def _show_conflict_dialog(self, message, title, has_option_2=True):
 		"""
 		Affiche une boîte de dialogue avec des boutons pour les options de conflit.
@@ -514,11 +545,13 @@ class AdminApp:
 		
 		fin_min = debut_min + film_duration + 20  # +20 min buffer
 		
-		# convertir minutes en HH:MM:SS
-		def min_to_horaire(minutes):
-			h = minutes // 60
-			m = minutes % 60
-			return f"{h:02d}:{m:02d}:00"
+		# Vérifier que l'horaire de fin ne dépasse pas 24h
+		if fin_min > JOURNEE_END_MIN:
+			msg = f"Erreur: La séance se terminerait à {self._min_to_horaire(fin_min, allow_overflow=True)}\n"
+			msg += f"Elle dépasse la limite de 24h.\n\n"
+			msg += f"Veuillez choisir un horaire antérieur."
+			messagebox.showerror("Dépassement horaire", msg)
+			return (None, [], False)
 		
 		# Étape 1: vérifier s'il y a un conflit avec l'horaire demandé
 		conflit_seance = None
@@ -546,7 +579,8 @@ class AdminApp:
 			msg = f"Pas de conflit détecté !\n\n"
 			msg += f"Salle: {salle_num}\n"
 			msg += f"Horaire: {horaire_debut}\n"
-			msg += f"Durée: {film_duration} minutes\n\n"
+			msg += f"Durée: {film_duration} minutes\n"
+			msg += f"Fin: {self._min_to_horaire(fin_min)}\n\n"
 			msg += f"Ajouter la séance ?"
 			
 			result = messagebox.askyesno("Confirmation", msg)
@@ -562,42 +596,51 @@ class AdminApp:
 		# Option A: décaler après la séance conflictuelle
 		proposed_debut_min_after = s_fin_min
 		proposed_fin_min_after = proposed_debut_min_after + film_duration + 20
-		proposed_horaire_after = min_to_horaire(proposed_debut_min_after)
+		proposed_horaire_after = self._min_to_horaire(proposed_debut_min_after)
 		
-		# Option B: vérifier s'il y a 3h (180 min) libres avant le film conflictuel
+		# Vérifier si Option A dépasse 24h
+		option_after_valid = proposed_horaire_after is not None and proposed_fin_min_after <= JOURNEE_END_MIN
+		
+		# Option B: vérifier s'il y a un créneau avant le film conflictuel
 		option_before_available = False
 		proposed_debut_min_before = None
 		proposed_horaire_before = None
 		
-		# Trouver l'horaire le plus tard où on peut commencer une séance 3h avant le film conflictuel
-		if s_debut_min_conflict >= (film_duration + 20):
-			proposed_debut_min_before = s_debut_min_conflict - (film_duration + 20)
-			proposed_fin_min_before = proposed_debut_min_before + film_duration + 20
+		# Trouver le dernier film qui se termine avant le film conflictuel
+		last_end_min_before = JOURNEE_START_MIN  # 10:00 = 600 min
+		
+		for seance in self.seances:
+			if seance.salleNum != salle_num:
+				continue
 			
-			# Vérifier s'il y a au moins 3h (180 min) libres avant cette position
-			libre_avant = True
-			for seance in self.seances:
-				if seance.salleNum != salle_num:
-					continue
+			try:
+				sh, sm, ss = map(int, seance.horaire.split(':'))
+				s_debut_min = sh * 60 + sm
 				
-				try:
-					sh, sm, ss = map(int, seance.horaire.split(':'))
-					s_debut_min = sh * 60 + sm
-					
+				# Vérifier si cette séance est AVANT le film conflictuel
+				if s_debut_min < s_debut_min_conflict:
 					film_obj = next((f for f in self.films if f.id == seance.filmId), None)
 					s_duree = film_obj.duree if film_obj else 90
 					s_fin_min_seance = s_debut_min + s_duree + 20
 					
-					# si cette séance chevauche notre créneau proposé avant
-					if not (proposed_fin_min_before <= s_debut_min or proposed_debut_min_before >= s_fin_min_seance):
-						libre_avant = False
-						break
-				except (ValueError, AttributeError):
-					continue
-			
-			if libre_avant:
-				proposed_horaire_before = min_to_horaire(proposed_debut_min_before)
-				option_before_available = True
+					# Garder la fin la plus tardive avant le film conflictuel
+					if s_fin_min_seance > last_end_min_before:
+						last_end_min_before = s_fin_min_seance
+			except (ValueError, AttributeError):
+				continue
+		
+		# Proposer un créneau qui débute 20 min après le dernier film avant le film conflictuel
+		proposed_debut_min_before = last_end_min_before
+		proposed_fin_min_before = proposed_debut_min_before + film_duration + 20
+		
+		# Vérifier que le créneau proposé:
+		# 1. Ne chevauche pas le film conflictuel
+		# 2. Ne dépasse pas 24h
+		if (proposed_fin_min_before <= s_debut_min_conflict and 
+			proposed_fin_min_before <= JOURNEE_END_MIN and 
+			proposed_debut_min_before >= JOURNEE_START_MIN):
+			proposed_horaire_before = self._min_to_horaire(proposed_debut_min_before)
+			option_before_available = True
 		
 		# Étape 3: vérifier récursivement si les horaires proposés impactent les séances suivantes
 		def find_cascading_shifts(current_debut_min, current_fin_min, processed_seances=None):
@@ -626,18 +669,35 @@ class AdminApp:
 						new_debut_min = current_fin_min
 						new_fin_min = new_debut_min + s_duree + 20
 						
-						shifts.append((seance, min_to_horaire(new_debut_min)))
+						# Vérifier que le nouvel horaire ne dépasse pas 24h
+						if new_fin_min > JOURNEE_END_MIN:
+							# Impossible de décaler, arrêter ici
+							return None
+						
+						new_horaire = self._min_to_horaire(new_debut_min)
+						if new_horaire is None:
+							return None
+						
+						shifts.append((seance, new_horaire))
 						
 						# vérifier récursivement les séances suivantes
 						further_shifts = find_cascading_shifts(new_debut_min, new_fin_min, processed_seances)
+						if further_shifts is None:
+							return None
 						shifts.extend(further_shifts)
 				except (ValueError, AttributeError):
 					continue
 			
 			return shifts
 		
-		seances_a_decaler_after = find_cascading_shifts(proposed_debut_min_after, proposed_fin_min_after)
-		seances_a_decaler_before = [] if not option_before_available else find_cascading_shifts(proposed_debut_min_before, proposed_fin_min_before)
+		seances_a_decaler_after = None
+		seances_a_decaler_before = None
+		
+		if option_after_valid:
+			seances_a_decaler_after = find_cascading_shifts(proposed_debut_min_after, proposed_fin_min_after)
+		
+		if option_before_available:
+			seances_a_decaler_before = find_cascading_shifts(proposed_debut_min_before, proposed_fin_min_before)
 		
 		# Étape 4: afficher un message de confirmation avec les options proposées
 		conflicting_film_name = next((f.nom for f in self.films if f.id == conflicting_seance.filmId), "?")
@@ -646,18 +706,31 @@ class AdminApp:
 		msg += f"Film conflictuel: {conflicting_film_name} à {conflicting_seance.horaire}\n"
 		msg += f"Horaire demandé: {horaire_debut}\n\n"
 		msg += "=== OPTIONS ===\n"
-		msg += f"\nOption 1: Placer APRÈS le film conflictuel\n"
-		msg += f"Horaire: {proposed_horaire_after}\n"
 		
-		if seances_a_decaler_after:
-			msg += f"Séances à décaler:\n"
-			for seance, new_horaire in seances_a_decaler_after:
-				film_name = next((f.nom for f in self.films if f.id == seance.filmId), "?")
-				msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
+		has_option_1 = False
+		has_option_2 = False
+		
+		if option_after_valid and seances_a_decaler_after is not None:
+			has_option_1 = True
+			msg += f"\nOption 1: Placer APRÈS le film conflictuel\n"
+			msg += f"Horaire: {proposed_horaire_after}\n"
+			
+			if seances_a_decaler_after:
+				msg += f"Séances à décaler:\n"
+				for seance, new_horaire in seances_a_decaler_after:
+					film_name = next((f.nom for f in self.films if f.id == seance.filmId), "?")
+					msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
+			else:
+				msg += "Aucune autre séance à décaler.\n"
 		else:
-			msg += "Aucune autre séance à décaler.\n"
+			msg += f"\nOption 1: Placer APRÈS le film conflictuel - NON DISPONIBLE\n"
+			if not option_after_valid:
+				msg += "Raison: Dépassement de 24h\n"
+			else:
+				msg += "Raison: Chevauchement de séances impossible à résoudre\n"
 		
-		if option_before_available:
+		if option_before_available and seances_a_decaler_before is not None:
+			has_option_2 = True
 			msg += f"\nOption 2: Placer AVANT le film conflictuel\n"
 			msg += f"Horaire: {proposed_horaire_before}\n"
 			
@@ -668,28 +741,31 @@ class AdminApp:
 					msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
 			else:
 				msg += "Aucune autre séance à décaler.\n"
-			
-			result = self._show_conflict_dialog(msg, "Décalage de séances", has_option_2=True)
-			
-			if result == 1:
-				proposed_debut_min = proposed_debut_min_after
-				seances_a_decaler = seances_a_decaler_after
-			elif result == 2:
-				proposed_debut_min = proposed_debut_min_before
-				seances_a_decaler = seances_a_decaler_before
-			else:
-				return (None, [], False)
 		else:
-			result = self._show_conflict_dialog(msg, "Décalage de séances", has_option_2=False)
-			
-			if result == 1:
-				proposed_debut_min = proposed_debut_min_after
-				seances_a_decaler = seances_a_decaler_after
-			elif result == 0:
-				return (None, [], False)
+			if option_before_available:
+				msg += f"\nOption 2: Placer AVANT le film conflictuel - NON DISPONIBLE\n"
+				msg += "Raison: Chevauchement de séances impossible à résoudre\n"
+		
+		if not has_option_1 and not has_option_2:
+			messagebox.showerror("Impossible", msg)
+			return (None, [], False)
+		
+		result = self._show_conflict_dialog(msg, "Décalage de séances", has_option_2=has_option_2)
+		
+		proposed_debut_min = None
+		seances_a_decaler = []
+		
+		if result == 1 and has_option_1:
+			proposed_debut_min = proposed_debut_min_after
+			seances_a_decaler = seances_a_decaler_after if seances_a_decaler_after else []
+		elif result == 2 and has_option_2:
+			proposed_debut_min = proposed_debut_min_before
+			seances_a_decaler = seances_a_decaler_before if seances_a_decaler_before else []
+		else:
+			return (None, [], False)
 		
 		# appliquer les changements
-		proposed_horaire = min_to_horaire(proposed_debut_min)
+		proposed_horaire = self._min_to_horaire(proposed_debut_min)
 		for seance, new_horaire in seances_a_decaler:
 			seance.horaire = new_horaire
 		return (proposed_horaire, seances_a_decaler, True)
@@ -712,6 +788,20 @@ class AdminApp:
 		except ValueError as e:
 			messagebox.showerror("Erreur", str(e))
 			return
+
+		# vérifier que l'horaire n'est pas avant 9h (540 minutes)
+		try:
+			h, m, s = map(int, horaire.split(':'))
+			horaire_min = h * 60 + m
+			
+			if horaire_min < JOURNEE_START_MIN:  # 540 = 9h
+				horaire_avant = horaire
+				horaire = "09:00:00"
+				msg = f"L'horaire demandé ({horaire_avant}) est avant 9h.\n"
+				msg += f"Il sera décalé à 09:00:00."
+				messagebox.showinfo("Ajustement d'horaire", msg)
+		except (ValueError, AttributeError):
+			pass
 
 		# vérifier les conflits et proposer des solutions
 		film_obj = next((f for f in self.films if f.id == film_id), None)
