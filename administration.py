@@ -475,9 +475,20 @@ class AdminApp:
 			except (ValueError, AttributeError):
 				continue
 		
-		# s'il n'y a pas de conflit, pas de modifications
+		# s'il n'y a pas de conflit, afficher un message de confirmation et ajouter la séance
 		if conflit_seance is None:
-			return (horaire_debut, [], False)
+			msg = f"Pas de conflit détecté !\n\n"
+			msg += f"Salle: {salle_num}\n"
+			msg += f"Horaire: {horaire_debut}\n"
+			msg += f"Durée: {film_duration} minutes\n\n"
+			msg += f"Ajouter la séance ?"
+			
+			result = messagebox.askyesno("Confirmation", msg)
+			
+			if result:
+				return (horaire_debut, [], True)
+			else:
+				return (None, [], False)
 		
 		# Étape 2: il y a un conflit, proposer l'horaire de fin de la séance qui chevauche
 		conflicting_seance, _, s_fin_min = conflit_seance
@@ -526,20 +537,23 @@ class AdminApp:
 		
 		seances_a_decaler = find_cascading_shifts(proposed_debut_min, proposed_fin_min)
 		
-		# Étape 4: afficher un message de confirmation seulement s'il y a des décalages
-		if not seances_a_decaler:
-			# pas de décalages nécessaires, utiliser l'horaire proposé
-			return (proposed_horaire, [], False)
+		# Étape 4: afficher un message de confirmation avec la décision d'ajouter ou non
+		conflicting_film_name = next((f.nom for f in self.films if f.id == conflicting_seance.filmId), "?")
 		
-		# des décalages sont nécessaires, demander confirmation
 		msg = "Conflit détecté !\n\n"
+		msg += f"Film conflictuel: {conflicting_film_name} à {conflicting_seance.horaire}\n"
 		msg += f"Horaire demandé: {horaire_debut}\n"
 		msg += f"Horaire proposé (fin du film conflictuel): {proposed_horaire}\n\n"
-		msg += f"Séances à décaler:\n"
-		for seance, new_horaire in seances_a_decaler:
-			film_name = next((f.nom for f in self.films if f.id == seance.filmId), "?")
-			msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
-		msg += f"\nAccepter ces modifications ?"
+		
+		if seances_a_decaler:
+			msg += f"Séances à décaler:\n"
+			for seance, new_horaire in seances_a_decaler:
+				film_name = next((f.nom for f in self.films if f.id == seance.filmId), "?")
+				msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
+		else:
+			msg += "Aucune autre séance à décaler.\n"
+		
+		msg += f"\nAccepter cette modification ?"
 		
 		result = messagebox.askyesno("Décalage de séances", msg)
 		
