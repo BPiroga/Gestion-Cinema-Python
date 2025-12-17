@@ -432,6 +432,72 @@ class AdminApp:
 		except (ValueError, IndexError):
 			raise ValueError("Format d'horaire invalide (utilisez HH:MM ou HH:MM:SS).")
 
+	def _show_conflict_dialog(self, message, title, has_option_2=True):
+		"""
+		Affiche une boîte de dialogue avec des boutons pour les options de conflit.
+		Retourne:
+		- 1 si "Option 1" (décaler après) est cliquée
+		- 2 si "Option 2" (placer avant) est cliquée
+		- 0 si "Annuler" est cliquée
+		"""
+		dialog = tk.Toplevel(self.root)
+		dialog.title(title)
+		dialog.geometry("600x400")
+		dialog.resizable(False, False)
+		dialog.transient(self.root)
+		dialog.grab_set()
+		
+		# Centrer la fenêtre par rapport à la fenêtre parent
+		dialog.update_idletasks()
+		x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (dialog.winfo_width() // 2)
+		y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (dialog.winfo_height() // 2)
+		dialog.geometry(f"+{x}+{y}")
+		
+		# Zone de texte avec scrollbar
+		frame_text = ttk.Frame(dialog)
+		frame_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+		
+		scrollbar = ttk.Scrollbar(frame_text)
+		scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+		
+		text_widget = tk.Text(frame_text, wrap=tk.WORD, yscrollcommand=scrollbar.set, height=15, width=70)
+		text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+		scrollbar.config(command=text_widget.yview)
+		
+		text_widget.insert(tk.END, message)
+		text_widget.config(state=tk.DISABLED)
+		
+		# Frame pour les boutons
+		frame_buttons = ttk.Frame(dialog)
+		frame_buttons.pack(fill=tk.X, padx=10, pady=10)
+		
+		result = tk.IntVar(value=0)
+		
+		def on_option1():
+			result.set(1)
+			dialog.destroy()
+		
+		def on_option2():
+			result.set(2)
+			dialog.destroy()
+		
+		def on_cancel():
+			result.set(0)
+			dialog.destroy()
+		
+		btn_option1 = ttk.Button(frame_buttons, text="Option 1", command=on_option1)
+		btn_option1.pack(side=tk.LEFT, padx=5)
+		
+		if has_option_2:
+			btn_option2 = ttk.Button(frame_buttons, text="Option 2", command=on_option2)
+			btn_option2.pack(side=tk.LEFT, padx=5)
+		
+		btn_cancel = ttk.Button(frame_buttons, text="Annuler", command=on_cancel)
+		btn_cancel.pack(side=tk.RIGHT, padx=5)
+		
+		self.root.wait_window(dialog)
+		return result.get()
+
 	def _get_next_available_slot(self, salle_num, horaire_debut, film_duration):
 		"""Vérifie les conflits et décale récursivement les séances impactées.
 		
@@ -490,15 +556,50 @@ class AdminApp:
 			else:
 				return (None, [], False)
 		
-		# Étape 2: il y a un conflit, proposer l'horaire de fin de la séance qui chevauche
-		conflicting_seance, _, s_fin_min = conflit_seance
-		proposed_debut_min = s_fin_min
-		proposed_fin_min = proposed_debut_min + film_duration + 20
-		proposed_horaire = min_to_horaire(proposed_debut_min)
+		# Étape 2: il y a un conflit, vérifier s'il y a 3h libres avant le film conflictuel
+		conflicting_seance, s_debut_min_conflict, s_fin_min = conflit_seance
 		
-		# Étape 3: vérifier récursivement si ce nouvel horaire impacte les séances suivantes
-		seances_a_decaler = []
+		# Option A: décaler après la séance conflictuelle
+		proposed_debut_min_after = s_fin_min
+		proposed_fin_min_after = proposed_debut_min_after + film_duration + 20
+		proposed_horaire_after = min_to_horaire(proposed_debut_min_after)
 		
+		# Option B: vérifier s'il y a 3h (180 min) libres avant le film conflictuel
+		option_before_available = False
+		proposed_debut_min_before = None
+		proposed_horaire_before = None
+		
+		# Trouver l'horaire le plus tard où on peut commencer une séance 3h avant le film conflictuel
+		if s_debut_min_conflict >= (film_duration + 20):
+			proposed_debut_min_before = s_debut_min_conflict - (film_duration + 20)
+			proposed_fin_min_before = proposed_debut_min_before + film_duration + 20
+			
+			# Vérifier s'il y a au moins 3h (180 min) libres avant cette position
+			libre_avant = True
+			for seance in self.seances:
+				if seance.salleNum != salle_num:
+					continue
+				
+				try:
+					sh, sm, ss = map(int, seance.horaire.split(':'))
+					s_debut_min = sh * 60 + sm
+					
+					film_obj = next((f for f in self.films if f.id == seance.filmId), None)
+					s_duree = film_obj.duree if film_obj else 90
+					s_fin_min_seance = s_debut_min + s_duree + 20
+					
+					# si cette séance chevauche notre créneau proposé avant
+					if not (proposed_fin_min_before <= s_debut_min or proposed_debut_min_before >= s_fin_min_seance):
+						libre_avant = False
+						break
+				except (ValueError, AttributeError):
+					continue
+			
+			if libre_avant:
+				proposed_horaire_before = min_to_horaire(proposed_debut_min_before)
+				option_before_available = True
+		
+		# Étape 3: vérifier récursivement si les horaires proposés impactent les séances suivantes
 		def find_cascading_shifts(current_debut_min, current_fin_min, processed_seances=None):
 			"""Trouve récursivement les séances à décaler."""
 			if processed_seances is None:
@@ -535,36 +636,63 @@ class AdminApp:
 			
 			return shifts
 		
-		seances_a_decaler = find_cascading_shifts(proposed_debut_min, proposed_fin_min)
+		seances_a_decaler_after = find_cascading_shifts(proposed_debut_min_after, proposed_fin_min_after)
+		seances_a_decaler_before = [] if not option_before_available else find_cascading_shifts(proposed_debut_min_before, proposed_fin_min_before)
 		
-		# Étape 4: afficher un message de confirmation avec la décision d'ajouter ou non
+		# Étape 4: afficher un message de confirmation avec les options proposées
 		conflicting_film_name = next((f.nom for f in self.films if f.id == conflicting_seance.filmId), "?")
 		
 		msg = "Conflit détecté !\n\n"
 		msg += f"Film conflictuel: {conflicting_film_name} à {conflicting_seance.horaire}\n"
-		msg += f"Horaire demandé: {horaire_debut}\n"
-		msg += f"Horaire proposé (fin du film conflictuel): {proposed_horaire}\n\n"
+		msg += f"Horaire demandé: {horaire_debut}\n\n"
+		msg += "=== OPTIONS ===\n"
+		msg += f"\nOption 1: Placer APRÈS le film conflictuel\n"
+		msg += f"Horaire: {proposed_horaire_after}\n"
 		
-		if seances_a_decaler:
+		if seances_a_decaler_after:
 			msg += f"Séances à décaler:\n"
-			for seance, new_horaire in seances_a_decaler:
+			for seance, new_horaire in seances_a_decaler_after:
 				film_name = next((f.nom for f in self.films if f.id == seance.filmId), "?")
 				msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
 		else:
 			msg += "Aucune autre séance à décaler.\n"
 		
-		msg += f"\nAccepter cette modification ?"
-		
-		result = messagebox.askyesno("Décalage de séances", msg)
-		
-		if result:
-			# appliquer les changements
-			for seance, new_horaire in seances_a_decaler:
-				seance.horaire = new_horaire
-			return (proposed_horaire, seances_a_decaler, True)
+		if option_before_available:
+			msg += f"\nOption 2: Placer AVANT le film conflictuel\n"
+			msg += f"Horaire: {proposed_horaire_before}\n"
+			
+			if seances_a_decaler_before:
+				msg += f"Séances à décaler:\n"
+				for seance, new_horaire in seances_a_decaler_before:
+					film_name = next((f.nom for f in self.films if f.id == seance.filmId), "?")
+					msg += f"  • {film_name}: {seance.horaire} → {new_horaire}\n"
+			else:
+				msg += "Aucune autre séance à décaler.\n"
+			
+			result = self._show_conflict_dialog(msg, "Décalage de séances", has_option_2=True)
+			
+			if result == 1:
+				proposed_debut_min = proposed_debut_min_after
+				seances_a_decaler = seances_a_decaler_after
+			elif result == 2:
+				proposed_debut_min = proposed_debut_min_before
+				seances_a_decaler = seances_a_decaler_before
+			else:
+				return (None, [], False)
 		else:
-			# l'utilisateur refuse, revenir au choix manuel
-			return (None, [], False)
+			result = self._show_conflict_dialog(msg, "Décalage de séances", has_option_2=False)
+			
+			if result == 1:
+				proposed_debut_min = proposed_debut_min_after
+				seances_a_decaler = seances_a_decaler_after
+			elif result == 0:
+				return (None, [], False)
+		
+		# appliquer les changements
+		proposed_horaire = min_to_horaire(proposed_debut_min)
+		for seance, new_horaire in seances_a_decaler:
+			seance.horaire = new_horaire
+		return (proposed_horaire, seances_a_decaler, True)
 
 	def add_seance(self):
 		film_sel = self.combo_film.get()
