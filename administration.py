@@ -316,32 +316,41 @@ class AdminApp:
 		self._render_schedule(None)  # None = ignorer la date, afficher toutes les séances
 
 	def _render_schedule(self, day):
-		"""Affiche un tableau salles x créneaux pour le jour donné.
-
-		Les colonnes sont les horaires présents, les lignes sont les salles.
-		On ignore complètement la date (paramètre day) et on prend toutes les séances, comme on garde le même emploi du temps pour chaque jour.
-		Une ligne d'horaires au-dessus de chaque salle, puis les séances.
+		"""Affiche un tableau salles x créneaux horaires avec gestion des chevauchements.
+		
+		Crée une grille temporelle par tranches de 30 minutes pour visualiser les séances qui se chevauchent.
 		"""
 		# vider l'ancien contenu
 		for w in self.schedule_container.winfo_children():
 			w.destroy()
 
-		# prendre TOUTES les séances, peu importe la date
+		# prendre TOUTES les séances
 		day_seances = list(self.seances)
 		if not day_seances:
 			tk.Label(self.schedule_container, text="Aucune séance disponible.").pack()
 			return
 
-		# normaliser tous les horaires au format HH:MM:SS avant de les utiliser
+		# normaliser tous les horaires
 		for seance in day_seances:
 			try:
 				seance.horaire = self._normalize_horaire(seance.horaire)
 			except ValueError:
-				pass  # Garder l'horaire tel quel s'il ne peut pas être normalisé
+				pass
 
-		times = sorted({s.horaire for s in day_seances})
 		salles = sorted(self.salles, key=lambda s: s.numSalle)
-
+		
+		# Calculer la plage horaire totale (9h-24h par défaut)
+		# On crée des créneaux de 30 minutes
+		SLOT_DURATION = 30  # minutes
+		START_HOUR = 9
+		END_HOUR = 24
+		
+		# Créer les créneaux horaires
+		time_slots = []
+		for h in range(START_HOUR, END_HOUR):
+			for m in [0, 30]:
+				time_slots.append((h, m))
+		
 		# Frame principal avec scrollbars
 		main_frame = tk.Frame(self.schedule_container)
 		main_frame.pack(fill=tk.BOTH, expand=True)
@@ -349,62 +358,112 @@ class AdminApp:
 		# Canvas avec scrollbars
 		canvas = tk.Canvas(main_frame, height=500, bg='white')
 		vbar = ttk.Scrollbar(main_frame, orient='vertical', command=canvas.yview)
+		hbar = ttk.Scrollbar(main_frame, orient='horizontal', command=canvas.xview)
 		
 		inner = tk.Frame(canvas, bg='white')
 		canvas.create_window((0, 0), window=inner, anchor='nw')
-		canvas.configure(yscrollcommand=vbar.set)
+		canvas.configure(yscrollcommand=vbar.set, xscrollcommand=hbar.set)
 
-		# rows (avec ligne d'horaires avant chaque salle)
-		row_idx = 0
-		for salle in salles:
-			# ligne d'horaires pour cette salle
-			lbl = tk.Label(inner, text='', width=10, height=1)
-			lbl.grid(row=row_idx, column=0, sticky='nsew')
+		# En-tête avec les horaires
+		tk.Label(inner, text="Salle", borderwidth=1, relief='solid', width=10, height=2, 
+				font=("Arial", 10, "bold"), bg='lightgray').grid(row=0, column=0, sticky='nsew')
+		
+		for col_idx, (h, m) in enumerate(time_slots, start=1):
+			tk.Label(inner, text=f"{h:02d}:{m:02d}", borderwidth=1, relief='solid', 
+					width=6, height=2, font=("Arial", 8), bg='lightblue').grid(row=0, column=col_idx, sticky='nsew')
+
+		# Pour chaque salle, afficher les séances
+		for row_idx, salle in enumerate(salles, start=1):
+			# Label de la salle
+			tk.Label(inner, text=f"Salle {salle.numSalle}", borderwidth=1, relief='solid', 
+					width=10, height=3, font=("Arial", 10), bg='lightgray').grid(row=row_idx, column=0, sticky='nsew')
 			
-			for c_idx, t in enumerate(times, start=1):
-				se = next((s for s in day_seances if s.salleNum == salle.numSalle and s.horaire == t), None)
-				if se:
-					# extraire horaires pour cette séance
-					film_obj = next((f for f in self.films if f.id == se.filmId), None)
-					duree = film_obj.duree if film_obj and film_obj.duree else 90
-					
+			# Récupérer les séances de cette salle
+			salle_seances = [s for s in day_seances if s.salleNum == salle.numSalle]
+			
+			# Marquer quels créneaux sont occupés pour éviter les doublons
+			occupied_slots = set()
+			
+			# Pour chaque créneau horaire
+			for col_idx, (slot_h, slot_m) in enumerate(time_slots, start=1):
+				slot_start_min = slot_h * 60 + slot_m
+				
+				# Vérifier si une séance occupe ce créneau
+				seance_in_slot = None
+				slot_position = None  # 'start', 'middle', 'end', 'single'
+				
+				for se in salle_seances:
 					try:
-						h, m, s = map(int, se.horaire.split(':'))
-						debut_min = h * 60 + m
+						# Calculer début et fin de la séance
+						h_deb, m_deb, s_deb = map(int, se.horaire.split(':'))
+						debut_min = h_deb * 60 + m_deb
+						
+						film_obj = next((f for f in self.films if f.id == se.filmId), None)
+						duree = film_obj.duree if film_obj and film_obj.duree else 90
 						fin_min = debut_min + duree
+						
+						# Vérifier si ce créneau est dans la séance
+						if debut_min <= slot_start_min < fin_min:
+							seance_in_slot = se
+							
+							# Déterminer la position dans la séance
+							if debut_min == slot_start_min:
+								slot_position = 'start'
+							elif slot_start_min + SLOT_DURATION >= fin_min:
+								slot_position = 'end'
+							else:
+								slot_position = 'middle'
+							break
+					except (ValueError, AttributeError):
+						continue
+				
+				if seance_in_slot and col_idx not in occupied_slots:
+					# Calculer combien de créneaux cette séance occupe
+					try:
+						h_deb, m_deb, s_deb = map(int, seance_in_slot.horaire.split(':'))
+						debut_min = h_deb * 60 + m_deb
+						film_obj = next((f for f in self.films if f.id == seance_in_slot.filmId), None)
+						duree = film_obj.duree if film_obj and film_obj.duree else 90
+						fin_min = debut_min + duree
+						
+						# Calculer le nombre de slots occupés
+						nb_slots = max(1, (fin_min - debut_min + SLOT_DURATION - 1) // SLOT_DURATION)
+						
+						# Marquer les slots comme occupés
+						for i in range(nb_slots):
+							occupied_slots.add(col_idx + i)
+						
+						# Afficher la séance avec colspan
+						film_nom = film_obj.nom if film_obj else "Film inconnu"
 						h_fin = fin_min // 60
 						m_fin = fin_min % 60
-						horaire_text = f"{h:02d}:{m:02d}-{h_fin:02d}:{m_fin:02d}"
+						
+						lbl = tk.Label(inner, 
+									text=f"{film_nom}\n{h_deb:02d}:{m_deb:02d}-{h_fin:02d}:{m_fin:02d}",
+									borderwidth=2, relief='solid', 
+									width=6*nb_slots, height=3, 
+									font=("Arial", 8, "bold"), 
+									bg='lightyellow',
+									wraplength=6*nb_slots*7,
+									justify='center')
+						lbl.grid(row=row_idx, column=col_idx, columnspan=nb_slots, sticky='nsew')
 					except (ValueError, AttributeError):
-						horaire_text = se.horaire
-					
-					lbl = tk.Label(inner, text=horaire_text, borderwidth=1, relief='solid', width=12, height=1, font=("Arial", 8), bg='lightyellow')
-				else:
-					lbl = tk.Label(inner, text='', bg='white', width=12, height=1)
-				lbl.grid(row=row_idx, column=c_idx, sticky='nsew')
-			row_idx += 1
-			
-			# ligne salle + séances (sans horaires)
-			lbl = tk.Label(inner, text=f"Salle {salle.numSalle}", borderwidth=1, relief='solid', width=10, height=5, font=("Arial", 10), bg='lightgray')
-			lbl.grid(row=row_idx, column=0, sticky='nsew')
-			for c_idx, t in enumerate(times, start=1):
-				se = next((s for s in day_seances if s.salleNum == salle.numSalle and s.horaire == t), None)
-				if se:
-					# avec bordure pour séances existantes, affiche seulement le film (pas d'horaires)
-					film = next((f.nom for f in self.films if f.id == se.filmId), '—')
-					lbl = tk.Label(inner, text=film, borderwidth=1, relief='solid', width=12, height=5, font=("Arial", 9), wraplength=80, justify='center')
-				else:
-					# sans bordure pour cases vides (juste fond blanc)
-					lbl = tk.Label(inner, text='', bg='white', width=12, height=5)
-				lbl.grid(row=row_idx, column=c_idx, sticky='nsew')
-			row_idx += 1
+						# En cas d'erreur, afficher quand même quelque chose
+						lbl = tk.Label(inner, text='?', borderwidth=1, relief='solid', 
+									width=6, height=3, bg='lightcoral')
+						lbl.grid(row=row_idx, column=col_idx, sticky='nsew')
+				elif col_idx not in occupied_slots:
+					# Créneau vide
+					lbl = tk.Label(inner, text='', bg='white', width=6, height=3)
+					lbl.grid(row=row_idx, column=col_idx, sticky='nsew')
 
 		inner.update_idletasks()
 		canvas.config(scrollregion=canvas.bbox("all"))
 		
-		# Grid layout pour la scrollbar
+		# Grid layout pour les scrollbars
 		canvas.grid(row=0, column=0, sticky='nsew')
 		vbar.grid(row=0, column=1, sticky='ns')
+		hbar.grid(row=1, column=0, sticky='ew')
 		
 		main_frame.grid_rowconfigure(0, weight=1)
 		main_frame.grid_columnconfigure(0, weight=1)
