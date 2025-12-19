@@ -1,15 +1,15 @@
 """
 Point d'entrée principal de l'application de réservation de cinéma.
-Lance l'interface graphique Tkinter.
+Lance l'interface d'administration.
 """
 import tkinter as tk
-from ui import CinemaApp
+from administration import AdminApp
 
 
 def main():
-    """Point d'entrée de l'application GUI."""
+    """Point d'entrée de l'application - Lance l'interface admin."""
     root = tk.Tk()
-    app = CinemaApp(root)
+    app = AdminApp(root)
     root.mainloop()
 
 
