@@ -54,6 +54,31 @@ def save_seances(path, seances):
 	save_json(path, data)
 
 
+
+
+#-------------------------
+
+def save_films(path, films):
+	"""Sauvegarde la liste des films dans un fichier JSON.
+
+	Accepte soit une liste d'instances `Film` (avec `to_dict`), soit
+	une liste de dictionnaires déjà sérialisés.
+	"""
+	# Normaliser en liste de dicts
+	data = []
+	for f in films:
+		try:
+			# instance de Film
+			data.append(f.to_dict())
+		except Exception:
+			# supposons que c'est déjà un dict
+			data.append(f)
+
+	save_json(path, data)
+
+
+#-----------------------------------
+
 def load_places(path):
 	"""Charge le fichier des places pour une séance."""
 	if path is None:
