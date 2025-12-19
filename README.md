@@ -1,5 +1,23 @@
 # Gestion-Cinema-Python
 
+Bienvenu sur notre programme de gestion d'un cinéma !
+
+Grace à nos deux interfaces graphiques vous pouvez réserver une séance en tant que client dans l'interface utilisateur ainsi que gérer l'ajout et la suppression de films et des séances avec notre interface administrateur.
+
+Nous avons utilisé JSON pour la gestion de base de données pour sauvegarder les informations sur les films et les séances et tkinter une librairie intégrée de python pour la création d'interfaces graphiques.
+
+GUI (interfacte graphique utilisateur)
+Vous pouvez apercevoir tous les films disponibles en executant le main, en sélectionnant un film vous allez pouvoir choisir la séance qui vous intéresse et rentrer vos informations pour réserver votre place, en fin vous allez récuperer un ticket récapitulatif de votre achat.
+
+GAI (interface graphique administrateur)
+En executant le fichier administration vous avez la possibilité de gérer les films et les séances avec un appérçu clair grace à un tableau représentatif des séances en fonction des salles. 
+
+
+
+J'AI ECRIS CA POUR L'INSTANT POUR LE README feel free de changer tout ce que vous jugez nécessaire
+
+
+
 
 ### Installation
 
