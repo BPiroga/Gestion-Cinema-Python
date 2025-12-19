@@ -8,6 +8,8 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import os
 import shutil
+import sys
+
 
 from database import load_films, load_salles, load_seances
 from services import (
@@ -49,7 +51,7 @@ class CinemaApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Réservation Cinéma")
-        self.root.geometry("1000x700")
+        self.root.attributes('-fullscreen', True)  # Fullscreen sans barre de titre
         self.root.configure(bg="#1a1a1a")
         
         # Configurer le nettoyage du cache à la fermeture
@@ -68,6 +70,7 @@ class CinemaApp:
         self.places_file_path = None
         self.salle = None
         self.salle_data = None
+        self.redirect_timer = None  # Timer pour la redirection automatique
         
         # Conteneur principal
         self.main_frame = tk.Frame(root, bg="#1a1a1a")
@@ -80,6 +83,30 @@ class CinemaApp:
         """Efface le contenu du frame principal."""
         for widget in self.main_frame.winfo_children():
             widget.destroy()
+    
+    def _on_mousewheel(self, event, canvas):
+        """Gère le scroll de la molette de la souris."""
+        # Windows and macOS use delta
+        if hasattr(event, 'delta'):
+            if event.delta > 0:
+                canvas.yview_scroll(-1, "units")
+            else:
+                canvas.yview_scroll(1, "units")
+        # Linux uses num
+        else:
+            if event.num == 4:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(1, "units")
+    
+    def _bind_mousewheel_recursive(self, widget, canvas):
+        """Bind la molette de la souris à un widget et tous ses enfants."""
+        widget.bind("<MouseWheel>", lambda e: self._on_mousewheel(e, canvas), add=True)
+        widget.bind("<Button-4>", lambda e: self._on_mousewheel(e, canvas), add=True)
+        widget.bind("<Button-5>", lambda e: self._on_mousewheel(e, canvas), add=True)
+        
+        for child in widget.winfo_children():
+            self._bind_mousewheel_recursive(child, canvas)
     
     def show_films(self):
         """Affiche la grille de films avec leurs covers."""
@@ -97,7 +124,6 @@ class CinemaApp:
         
         # Frame scrollable pour les films
         canvas = tk.Canvas(self.main_frame, bg="#1a1a1a", highlightthickness=0)
-        scrollbar = ttk.Scrollbar(self.main_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg="#1a1a1a")
         
         scrollable_frame.bind(
@@ -105,26 +131,43 @@ class CinemaApp:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
         
-        # Grille de films (3 colonnes)
+        # Bind mouse wheel events for scrolling
+        canvas.bind("<MouseWheel>", lambda e: self._on_mousewheel(e, canvas))
+        canvas.bind("<Button-4>", lambda e: self._on_mousewheel(e, canvas))  # Linux scroll up
+        canvas.bind("<Button-5>", lambda e: self._on_mousewheel(e, canvas))  # Linux scroll down
+        scrollable_frame.bind("<MouseWheel>", lambda e: self._on_mousewheel(e, canvas))
+        scrollable_frame.bind("<Button-4>", lambda e: self._on_mousewheel(e, canvas))
+        scrollable_frame.bind("<Button-5>", lambda e: self._on_mousewheel(e, canvas))
+        
+        # Ajouter du padding à gauche
+        scrollable_frame.columnconfigure(0, minsize=120 )
+        
+        # Grille de films (5 colonnes)
         row, col = 0, 0
         for film in self.films:
             film_frame = self.create_film_card(scrollable_frame, film)
-            film_frame.grid(row=row, column=col, padx=15, pady=15)
+            film_frame.grid(row=row, column=col+1, padx=15, pady=15)
             
             col += 1
-            if col >= 3:
+            if col >= 5:
                 col = 0
                 row += 1
         
+        # Bind mousewheel to all child widgets after creation
+        self._bind_mousewheel_recursive(scrollable_frame, canvas)
+        
         canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
     
     def create_film_card(self, parent, film):
         """Crée une carte de film avec cover et titre."""
-        card = tk.Frame(parent, bg="#2a2a2a", relief=tk.RAISED, borderwidth=2)
+        card = tk.Frame(parent, bg="#2a2a2a", relief=tk.RAISED, borderwidth=2, width=230, height=480)
+        card.pack_propagate(False)  # Empêcher le frame de se redimensionner
+        
+        # Frame interne pour le contenu (cover, titre, info)
+        content_frame = tk.Frame(card, bg="#2a2a2a")
+        content_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=0, pady=0)
         
         # Charger le cover (gérer les chemins relatifs avec ./)
         if film.cover:
@@ -140,13 +183,13 @@ class CinemaApp:
                 img = img.resize((200, 300), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 
-                cover_label = tk.Label(card, image=photo, bg="#2a2a2a")
+                cover_label = tk.Label(content_frame, image=photo, bg="#2a2a2a")
                 cover_label.image = photo  # Garder une référence
                 cover_label.pack(pady=5)
             except Exception as e:
                 # Si erreur de chargement, afficher un placeholder
                 placeholder = tk.Label(
-                    card, 
+                    content_frame, 
                     text="Pas d'image", 
                     width=25, 
                     height=15,
@@ -156,7 +199,7 @@ class CinemaApp:
                 placeholder.pack(pady=5)
         else:
             placeholder = tk.Label(
-                card, 
+                content_frame, 
                 text="Pas d'image", 
                 width=25, 
                 height=15,
@@ -167,16 +210,33 @@ class CinemaApp:
         
         # Titre du film
         title = tk.Label(
-            card, 
+            content_frame, 
             text=film.nom, 
             font=("Arial", 12, "bold"),
             bg="#2a2a2a",
             fg="white",
-            wraplength=200
+            wraplength=200,
+            justify=tk.CENTER
         )
-        title.pack(pady=5)
+        title.pack(pady=2, padx=5, fill=tk.X)
+
+        # Informations du film (réalisateur, genre, durée)
+        heures = film.duree // 60
+        minutes = film.duree % 60
+        duree_formatee = f"{heures}h {minutes}min" if heures > 0 else f"{minutes}min"
+        info_text = f"{film.realisateur}\n{film.genre}\n{duree_formatee}"
+        info = tk.Label( 
+            content_frame,
+            text=info_text,
+            font=("Arial", 9),
+            bg="#2a2a2a",
+            fg="#aaa",
+            wraplength=200,
+            justify=tk.CENTER
+        )
+        info.pack(pady=2, padx=5, fill=tk.X)
         
-        # Bouton de sélection
+        # Bouton de sélection - fixé en bas de la carte
         btn = tk.Button(
             card,
             text="Voir les séances",
@@ -186,7 +246,7 @@ class CinemaApp:
             font=("Arial", 10, "bold"),
             cursor="hand2"
         )
-        btn.pack(pady=10)
+        btn.pack(side=tk.BOTTOM, pady=5, padx=5, fill=tk.X)
         
         return card
     
@@ -240,14 +300,16 @@ class CinemaApp:
         seances_frame.pack(pady=20)
         
         for seance in film_seances:
+            salle = find_salle(self.salles, seance)
+            salle_type = salle.type if salle else "Standard"
             btn = tk.Button(
                 seances_frame,
-                text=f"{seance.jour} à {seance.horaire} - Salle {seance.salleNum}",
+                text=f"{seance.jour} à {seance.horaire} - Salle {seance.salleNum} ({salle_type})",
                 command=lambda s=seance: self.select_seance(s),
                 bg="#2a2a2a",
                 fg="white",
                 font=("Arial", 12),
-                width=40,
+                width=50,
                 height=2,
                 cursor="hand2"
             )
@@ -312,7 +374,7 @@ class CinemaApp:
         # Écran
         ecran = tk.Label(
             self.main_frame,
-            text="═══════════ ÉCRAN ═══════════",
+            text="═══════════════ ÉCRAN ═══════════════",
             font=("Arial", 14, "bold"),
             bg="#1a1a1a",
             fg="#666"
@@ -388,13 +450,30 @@ class CinemaApp:
         self.selected_place = place
         self.show_user_info()
     
+    def validate_email_realtime(self, event):
+        """Valide l'email en temps réel et affiche les erreurs."""
+        email = self.email_entry.get().strip()
+        
+        if not email:
+            self.email_error.config(text="", fg="#ff6b6b")
+            return
+        
+        # Vérifier format email
+        if "@" not in email or "." not in email.split("@")[-1]:
+            self.email_error.config(text="Format invalide: utilisez example@domaine.com", fg="#ff6b6b")
+        else:
+            self.email_error.config(text="✓ Valide", fg="#4CAF50")
+    
     def show_user_info(self):
         """Affiche le formulaire de saisie des informations utilisateur."""
         self.clear_frame()
         
-        # Prix selon le type de salle
+        # Prix selon le type de salle sélectionné
         type_tarif = {"Standard": 10.0, "3D": 12.0, "Imax": 15.0}
-        self.prix = type_tarif.get(self.salle.type, 10.0)
+        prix_base = type_tarif.get(self.salle.type, 10.0)
+        
+        # Réductions par catégorie
+        reductions = {"adulte": 0.0, "etudiant": 0.2, "enfant": 0.5}
         
         # Titre
         title = tk.Label(
@@ -406,13 +485,13 @@ class CinemaApp:
         )
         title.pack(pady=20)
         
-        # Récapitulatif
+        # Récapitulatif 
         recap = tk.Label(
             self.main_frame,
             text=f"Film: {self.selected_film.nom}\n"
                  f"Séance: {self.selected_seance.jour} {self.selected_seance.horaire}\n"
                  f"Place: Rangée {self.selected_place.row}, Colonne {self.selected_place.column}\n"
-                 f"Prix: {self.prix:.2f} € (salle {self.salle.type})",
+                 f"Salle: {self.salle.type}",
             font=("Arial", 12),
             bg="#2a2a2a",
             fg="white",
@@ -421,6 +500,16 @@ class CinemaApp:
             pady=15
         )
         recap.pack(pady=20)
+        
+        # Label de prix dynamique
+        self.prix_label = tk.Label(
+            self.main_frame,
+            text=f"Prix: {prix_base:.2f} €",
+            font=("Arial", 14, "bold"),
+            bg="#1a1a1a",
+            fg="#4CAF50"
+        )
+        self.prix_label.pack(pady=10)
         
         # Formulaire
         form_frame = tk.Frame(self.main_frame, bg="#1a1a1a")
@@ -431,12 +520,27 @@ class CinemaApp:
         self.email_entry = tk.Entry(form_frame, font=("Arial", 12), width=30)
         self.email_entry.grid(row=0, column=1, pady=10, padx=10)
         
+        # Label d'erreur email
+        self.email_error = tk.Label(form_frame, text="", font=("Arial", 10), bg="#1a1a1a", fg="#ff6b6b")
+        self.email_error.grid(row=1, column=1, sticky=tk.W, padx=10)
+        
+        # Bind event pour valider l'email en temps réel
+        self.email_entry.bind("<KeyRelease>", self.validate_email_realtime)
+        
         # Catégorie
-        tk.Label(form_frame, text="Catégorie:", font=("Arial", 12), bg="#1a1a1a", fg="white").grid(row=1, column=0, sticky=tk.W, pady=10)
+        tk.Label(form_frame, text="Catégorie:", font=("Arial", 12), bg="#1a1a1a", fg="white").grid(row=2, column=0, sticky=tk.W, pady=10)
         
         self.categorie_var = tk.StringVar(value="adulte")
         categorie_frame = tk.Frame(form_frame, bg="#1a1a1a")
-        categorie_frame.grid(row=1, column=1, sticky=tk.W)
+        categorie_frame.grid(row=2, column=1, sticky=tk.W)
+        
+        def update_price(*args):
+            """Met à jour le prix en fonction de la catégorie sélectionnée."""
+            categorie = self.categorie_var.get()
+            reduction = reductions.get(categorie, 0.0)
+            prix_final = prix_base * (1 - reduction)
+            self.prix = prix_final
+            self.prix_label.config(text=f"Prix: {prix_final:.2f} €")
         
         tk.Radiobutton(
             categorie_frame, 
@@ -446,30 +550,36 @@ class CinemaApp:
             bg="#1a1a1a",
             fg="white",
             selectcolor="#2a2a2a",
-            font=("Arial", 11)
+            font=("Arial", 11),
+            command=update_price
         ).pack(side=tk.LEFT, padx=5)
         
         tk.Radiobutton(
             categorie_frame, 
-            text="Étudiant", 
+            text="Étudiant (-20%)", 
             variable=self.categorie_var, 
             value="etudiant",
             bg="#1a1a1a",
             fg="white",
             selectcolor="#2a2a2a",
-            font=("Arial", 11)
+            font=("Arial", 11),
+            command=update_price
         ).pack(side=tk.LEFT, padx=5)
         
         tk.Radiobutton(
             categorie_frame, 
-            text="Enfant", 
+            text="Enfant (-50%)", 
             variable=self.categorie_var, 
             value="enfant",
             bg="#1a1a1a",
             fg="white",
             selectcolor="#2a2a2a",
-            font=("Arial", 11)
+            font=("Arial", 11),
+            command=update_price
         ).pack(side=tk.LEFT, padx=5)
+        
+        # Initialiser le prix
+        self.prix = prix_base
         
         # Boutons
         buttons_frame = tk.Frame(self.main_frame, bg="#1a1a1a")
@@ -500,9 +610,11 @@ class CinemaApp:
         email = self.email_entry.get().strip()
         categorie = self.categorie_var.get()
         
-        # Validation email simple
+        # Validation email
         if not email or "@" not in email or "." not in email.split("@")[-1]:
-            messagebox.showerror("Erreur", "Veuillez entrer un e-mail valide.")
+            # Focus sur le champ et affiche l'erreur
+            self.email_error.config(text="Format invalide: utilisez example@domaine.com", fg="#ff6b6b")
+            self.email_entry.focus()
             return
         
         # Générer le code de réservation
@@ -511,8 +623,8 @@ class CinemaApp:
         # Créer l'objet personne
         personne = Personne(mail=email, categorie=categorie)
         
-        # Sauvegarder la réservation
-        save_reservation_data(
+        # Sauvegarder la réservation et récupérer le chemin du QR code et du PDF
+        qrcode_path, pdf_path = save_reservation_data(
             self.selected_seance,
             self.places_file_path,
             self.places,
@@ -527,11 +639,26 @@ class CinemaApp:
         )
         
         # Afficher le ticket
-        self.show_ticket(code, personne)
+        self.show_ticket(code, personne, qrcode_path, pdf_path)
     
-    def show_ticket(self, code, personne):
+    def show_ticket(self, code, personne, qrcode_path, pdf_path):
         """Affiche le ticket de réservation."""
         self.clear_frame()
+        
+        # Ouvrir automatiquement le PDF (il est déjà vérifié dans services.py)
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                # Convertir en chemin absolu
+                abs_pdf_path = os.path.abspath(pdf_path)
+                
+                if sys.platform == 'win32':
+                    os.startfile(abs_pdf_path)
+                elif sys.platform == 'darwin':  # macOS
+                    os.system(f'open "{abs_pdf_path}"')
+                else:  # Linux
+                    os.system(f'xdg-open "{abs_pdf_path}"')
+            except Exception as e:
+                print(f"Erreur lors de l'ouverture du PDF: {e}")
         
         # Titre
         title = tk.Label(
@@ -560,8 +687,9 @@ class CinemaApp:
         Catégorie: {personne.categorie}
         Prix: {self.prix:.2f} €
         
-        Présentez ce code à l'entrée pour scanner
-        et accéder à la salle. Bon film !
+        Votre e-billet PDF a été ouvert automatiquement.
+        Présentez-le à l'entrée pour accéder à la salle.
+        Bon film !
         """
         
         tk.Label(
@@ -575,20 +703,47 @@ class CinemaApp:
             pady=30
         ).pack()
         
-        # Bouton nouvelle réservation
+        # Message de redirection
+        redirect_msg = tk.Label(
+            self.main_frame,
+            text="Redirection automatique vers l'accueil dans 10 secondes...",
+            font=("Arial", 10),
+            bg="#1a1a1a",
+            fg="#aaa"
+        )
+        redirect_msg.pack(pady=10)
+        
+        # Redirection automatique après 10 secondes
+        self.redirect_timer = self.root.after(10000, self.reset)
+        
+        # Bouton nouvelle réservation (pour redirection immédiate)
         tk.Button(
             self.main_frame,
             text="Nouvelle réservation",
-            command=self.reset,
+            command=self.cancel_and_reset,
             bg="#d32f2f",
             fg="white",
             font=("Arial", 14, "bold"),
             width=25,
             height=2
-        ).pack(pady=30)
+        ).pack(pady=20)
+    
+    def cancel_and_reset(self):
+        """Annule le timer de redirection et réinitialise l'application."""
+        # Annuler la redirection automatique si elle existe
+        if self.redirect_timer:
+            self.root.after_cancel(self.redirect_timer)
+            self.redirect_timer = None
+        # Réinitialiser l'application
+        self.reset()
     
     def reset(self):
         """Réinitialise l'application pour une nouvelle réservation."""
+        # Annuler le timer s'il existe encore
+        if self.redirect_timer:
+            self.root.after_cancel(self.redirect_timer)
+            self.redirect_timer = None
+            
         self.selected_film = None
         self.selected_seance = None
         self.selected_place = None
