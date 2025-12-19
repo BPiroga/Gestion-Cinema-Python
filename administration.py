@@ -1,5 +1,5 @@
 """
-Interface d'administration (GUI Tkinter) pour gérer l'ajout et la suppression de films et des séances.
+Interface Graphique d'administration (GUI Tkinter) pour gérer l'ajout et la suppression de films et des séances.
 Utilisation des utilitaires de `database.py` pour charger et sauvegarder les JSON.
 
 Ce fichier contient la classe principale AdminApp qui gère l'interface générale.
