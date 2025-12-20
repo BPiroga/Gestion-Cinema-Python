@@ -15,10 +15,10 @@ from .components import create_film_card
 
 
 class CinemaViews:
-    """Mixin contenant toutes les méthodes de vues."""
+    #Mixin contenant toutes les méthodes d'affichage.
     
     def show_films(self):
-        """Affiche la grille de films avec leurs covers."""
+        #Affiche la grille de films avec leurs covers.
         self.clear_frame()
         
         # Titre
@@ -42,15 +42,15 @@ class CinemaViews:
         
         canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
         
-        # Bind mouse wheel events for scrolling
+        # Bind la molette pour scroll
         canvas.bind("<MouseWheel>", lambda e: on_mousewheel(e, canvas))
-        canvas.bind("<Button-4>", lambda e: on_mousewheel(e, canvas))  # Linux scroll up
-        canvas.bind("<Button-5>", lambda e: on_mousewheel(e, canvas))  # Linux scroll down
+        canvas.bind("<Button-4>", lambda e: on_mousewheel(e, canvas))   #Pour le scroll sur linux
+        canvas.bind("<Button-5>", lambda e: on_mousewheel(e, canvas))  
         scrollable_frame.bind("<MouseWheel>", lambda e: on_mousewheel(e, canvas))
         scrollable_frame.bind("<Button-4>", lambda e: on_mousewheel(e, canvas))
         scrollable_frame.bind("<Button-5>", lambda e: on_mousewheel(e, canvas))
         
-        # Ajouter du padding à gauche
+        # Padding à gauche pour centrer
         scrollable_frame.columnconfigure(0, minsize=120)
         
         # Grille de films (5 colonnes)
@@ -64,13 +64,12 @@ class CinemaViews:
                 col = 0
                 row += 1
         
-        # Bind mousewheel to all child widgets after creation
         bind_mousewheel_recursive(scrollable_frame, canvas)
         
         canvas.pack(side="left", fill="both", expand=True)
     
     def show_seances(self):
-        """Affiche les séances disponibles pour le film sélectionné."""
+        #Affiche les séances disponibles pour le film sélectionné.
         self.clear_frame()
         
         # Titre
@@ -310,7 +309,7 @@ class CinemaViews:
         categorie_frame.grid(row=2, column=1, sticky=tk.W)
         
         def update_price(*args):
-            """Met à jour le prix en fonction de la catégorie sélectionnée."""
+            #Met à jour le prix en fonction de la catégorie sélectionnée.
             categorie = self.categorie_var.get()
             reduction = reductions.get(categorie, 0.0)
             prix_final = prix_base * (1 - reduction)

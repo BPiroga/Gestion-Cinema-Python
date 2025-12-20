@@ -14,7 +14,7 @@ CACHE_DIR = "Database/cache"
 
 
 def clear_cache():
-    """Vide le dossier cache à la fermeture de l'application."""
+    #Vide le dossier cache à la fermeture de l'application.
     if os.path.exists(CACHE_DIR):
         # Supprimer tous les fichiers dans le cache
         for filename in os.listdir(CACHE_DIR):
@@ -29,7 +29,7 @@ def clear_cache():
 
 
 def on_mousewheel(event, canvas):
-    """Gère le scroll de la molette de la souris."""
+    #Gère le scroll de la molette de la souris.
     # Windows and macOS use delta
     if hasattr(event, 'delta'):
         if event.delta > 0:
@@ -45,7 +45,7 @@ def on_mousewheel(event, canvas):
 
 
 def bind_mousewheel_recursive(widget, canvas):
-    """Bind la molette de la souris à un widget et tous ses enfants."""
+    #Bind la molette de la souris à un widget et tous ses enfants.
     widget.bind("<MouseWheel>", lambda e: on_mousewheel(e, canvas), add=True)
     widget.bind("<Button-4>", lambda e: on_mousewheel(e, canvas), add=True)
     widget.bind("<Button-5>", lambda e: on_mousewheel(e, canvas), add=True)

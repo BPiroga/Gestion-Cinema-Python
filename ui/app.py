@@ -12,12 +12,12 @@ from .views import CinemaViews
 
 
 class CinemaApp(CinemaViews):
-    """Application principale de réservation de cinéma avec interface graphique."""
+    #Application principale de réservation de cinéma avec interface graphique.
     
     def __init__(self, root):
         self.root = root
         self.root.title("Réservation Cinéma")
-        self.root.attributes('-fullscreen', True)  # Fullscreen sans barre de titre
+        self.root.attributes('-fullscreen', True)  
         self.root.configure(bg="#1a1a1a")
         
         # Configurer le nettoyage du cache à la fermeture
@@ -36,7 +36,7 @@ class CinemaApp(CinemaViews):
         self.places_file_path = None
         self.salle = None
         self.salle_data = None
-        self.redirect_timer = None  # Timer pour la redirection automatique
+        self.redirect_timer = None  
         
         # Conteneur principal
         self.main_frame = tk.Frame(root, bg="#1a1a1a")
@@ -46,17 +46,17 @@ class CinemaApp(CinemaViews):
         self.show_films()
     
     def clear_frame(self):
-        """Efface le contenu du frame principal."""
+        #Efface le contenu du frame principal.
         for widget in self.main_frame.winfo_children():
             widget.destroy()
     
     def select_film(self, film):
-        """Sélectionne un film et affiche ses séances."""
+        #Sélectionne un film et affiche ses séances.
         self.selected_film = film
         self.show_seances()
     
     def select_seance(self, seance):
-        """Sélectionne une séance et prépare la sélection de place."""
+        #Sélectionne une séance et prépare la sélection de place.
         self.selected_seance = seance
         
         # Trouver la salle
@@ -76,12 +76,12 @@ class CinemaApp(CinemaViews):
         self.show_places()
     
     def select_place(self, place):
-        """Sélectionne une place et passe à la saisie des informations."""
+        #Sélectionne une place et passe à la saisie des informations.
         self.selected_place = place
         self.show_user_info()
     
     def validate_email_realtime(self, event):
-        """Valide l'email en temps réel et affiche les erreurs."""
+        #Valide l'email en temps réel et affiche les erreurs.
         email = self.email_entry.get().strip()
         
         if not email:
@@ -95,13 +95,12 @@ class CinemaApp(CinemaViews):
             self.email_error.config(text="✓ Valide", fg="#4CAF50")
     
     def process_payment(self):
-        """Traite le paiement et finalise la réservation."""
+        #Traite le paiement et finalise la réservation.
         email = self.email_entry.get().strip()
         categorie = self.categorie_var.get()
         
         # Validation email
         if not email or "@" not in email or "." not in email.split("@")[-1]:
-            # Focus sur le champ et affiche l'erreur
             self.email_error.config(text="Format invalide: utilisez example@domaine.com", fg="#ff6b6b")
             self.email_entry.focus()
             return
@@ -131,16 +130,14 @@ class CinemaApp(CinemaViews):
         self.show_ticket(code, personne, qrcode_path, pdf_path)
     
     def cancel_and_reset(self):
-        """Annule le timer de redirection et réinitialise l'application."""
-        # Annuler la redirection automatique si elle existe
+        #Annule le timer de redirection et réinitialise l'application.
         if self.redirect_timer:
             self.root.after_cancel(self.redirect_timer)
             self.redirect_timer = None
-        # Réinitialiser l'application
         self.reset()
     
     def reset(self):
-        """Réinitialise l'application pour une nouvelle réservation."""
+        #Réinitialise l'application pour une nouvelle réservation.
         # Annuler le timer s'il existe encore
         if self.redirect_timer:
             self.root.after_cancel(self.redirect_timer)
@@ -160,8 +157,6 @@ class CinemaApp(CinemaViews):
         self.show_films()
     
     def on_closing(self):
-        """Gère la fermeture de l'application en vidant le cache."""
-        # Vider le cache
+        #Gère la fermeture de l'application en vidant le cache.
         clear_cache()
-        # Fermer la fenêtre
         self.root.destroy()

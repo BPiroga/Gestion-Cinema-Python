@@ -91,7 +91,7 @@ def create_film_card(parent, film, on_select_callback):
     )
     info.pack(pady=2, padx=5, fill=tk.X)
     
-    # Bouton de sélection - fixé en bas de la carte
+    # Bouton de sélection 
     btn = tk.Button(
         card,
         text="Voir les séances",
